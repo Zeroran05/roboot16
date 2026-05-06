@@ -6,6 +6,75 @@
 cd /root/isaaclab
 ```
 
+## Git 常用命令
+
+进入仓库目录：
+
+```bash
+cd /root/isaaclab/roboot16
+```
+
+查看当前状态：
+
+```bash
+git status
+```
+
+查看当前分支和最近一次提交：
+
+```bash
+git branch --show-current
+git log --oneline -1
+```
+
+查看当前 commit 的短编号：
+
+```bash
+git rev-parse --short HEAD
+```
+
+拉取远程最新代码：
+
+```bash
+git pull origin main
+```
+
+添加本次修改：
+
+```bash
+git add .
+```
+
+提交本次修改：
+
+```bash
+git commit -m "your message"
+```
+
+推送到远程仓库：
+
+```bash
+git push origin main
+```
+
+查看最近几次提交：
+
+```bash
+git log --oneline -5
+```
+
+查看某次训练对应的 Git 记录：
+
+```bash
+find logs -maxdepth 4 -type f | rg '/git/|\.diff$'
+```
+
+从服务器同步日志回本地（示例）：
+
+```bash
+rsync -avz <server>:/path/to/roboot16/logs/ ./logs_remote/
+```
+
 ## 0. 常用任务一览
 
 | 任务类型 | Task ID | 用途说明 |

@@ -30,17 +30,18 @@ roboot16_amp_project/
 │       └── run1_5_debug.pkl
 ├── docs/
 │   └── README.md
-└── scripts/
-    ├── export_roboot16_amp_expert.py
-    └── split_robot_motion.py
+├── GMR/
+│   └── scripts/
+│       ├── export_roboot16_amp_expert.py
+│       └── split_robot_motion.py
 ```
 
 ## What Each Part Does
 
-- `scripts/export_roboot16_amp_expert.py`
+- `GMR/scripts/export_roboot16_amp_expert.py`
   Replays a `roboot16` GMR motion PKL in MuJoCo, computes root-local foot positions, and exports a TianKung-style AMP expert `txt`.
 
-- `scripts/split_robot_motion.py`
+- `GMR/scripts/split_robot_motion.py`
   Splits a long GMR motion PKL into multiple PKL segments by frame range.
 
 - `assets/Roboot1.6/xml/roboot16_1.xml`
@@ -109,7 +110,7 @@ If you want visualization on macOS, use `mjpython`.
 Run AMP export headless:
 
 ```bash
-python scripts/export_roboot16_amp_expert.py \
+python GMR/scripts/export_roboot16_amp_expert.py \
   --input_pkl data/segments/run1_1.pkl \
   --output_txt data/amp_expert/run1_1.txt \
   --output_debug_pkl data/amp_expert/run1_1_debug.pkl \
@@ -119,7 +120,7 @@ python scripts/export_roboot16_amp_expert.py \
 Run AMP export with visualization:
 
 ```bash
-mjpython scripts/export_roboot16_amp_expert.py \
+mjpython GMR/scripts/export_roboot16_amp_expert.py \
   --input_pkl data/segments/run1_1.pkl \
   --output_txt data/amp_expert/run1_1.txt \
   --output_debug_pkl data/amp_expert/run1_1_debug.pkl \
@@ -130,7 +131,7 @@ mjpython scripts/export_roboot16_amp_expert.py \
 Split a full motion:
 
 ```bash
-python scripts/split_robot_motion.py \
+python GMR/scripts/split_robot_motion.py \
   --input data/source_pkl/run1_subject2.pkl \
   --output_dir data/segments \
   --segment 3362:3415 \

@@ -81,7 +81,7 @@ ls -lt /root/isaaclab/roboot16_amp_project/logs/amp_rsl_rl/roboot16_amp_flat_pro
 ```bash
 cd /root/isaaclab/roboot16_amp_project
 
-python3 scripts/export_roboot16_amp_expert.py \
+python3 GMR/scripts/export_roboot16_amp_expert.py \
   --input_pkl data/source_pkl/run1_subject2.pkl \
   --output_txt data/amp_expert/run1_subject2.txt \
   --output_debug_pkl data/amp_expert/run1_subject2_debug.pkl \
@@ -93,7 +93,7 @@ python3 scripts/export_roboot16_amp_expert.py \
 ```bash
 cd /root/isaaclab/roboot16_amp_project
 
-python3 scripts/export_roboot16_amp_expert.py \
+python3 GMR/scripts/export_roboot16_amp_expert.py \
   --input_pkl data/source_pkl/run1_subject2.pkl \
   --output_txt data/amp_expert/run1_subject2.txt \
   --output_debug_pkl data/amp_expert/run1_subject2_debug.pkl \

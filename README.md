@@ -92,7 +92,7 @@ If you regenerate debug pickles and want to rebuild the `.npy` dataset:
 
 ```bash
 cd /root/isaaclab/roboot16_amp_project
-python3 scripts/convert_amp_debug_to_npy.py data/amp_expert/run1_1_debug.pkl data/amp_npy/run1_1.npy
+python3 GMR/scripts/convert_amp_debug_to_npy.py data/amp_expert/run1_1_debug.pkl data/amp_npy/run1_1.npy
 ```
 
 ## Logs

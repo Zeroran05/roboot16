@@ -8,10 +8,18 @@ import time
 import mujoco as mj
 import mujoco.viewer as mjv
 import numpy as np
+import numpy.core as numpy_core
+import numpy.core.multiarray as numpy_core_multiarray
+
+sys.modules.setdefault("numpy._core", numpy_core)
+sys.modules.setdefault("numpy._core.multiarray", numpy_core_multiarray)
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+
+# 关节位置和速度都是绝对值；脚位置是在root下的局部坐标；
 
 
 # Ordering contract used by this script:

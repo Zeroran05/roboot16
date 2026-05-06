@@ -2,13 +2,13 @@
 
 ''' 
 txt回放；固定root；
-./isaaclab.sh -p roboot16_amp_project/scripts/visualize_amp_replay_isaacsim.py \
---txt /root/isaaclab/roboot16_amp_project/data/amp_expert/run1_1.txt
+./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
+--txt /root/isaaclab/roboot16/data/amp_expert/run1_1.txt
 
 结合txt和pkl回放；root使用pkl轨迹，关节和脚位置使用txt数据；验证两者的对齐情况；
-./isaaclab.sh -p roboot16_amp_project/scripts/visualize_amp_replay_isaacsim.py \
---txt /root/isaaclab/roboot16_amp_project/data/amp_expert/run1_2.txt \
---pkl /root/isaaclab/roboot16_amp_project/data/segments/run1_2.pkl \
+./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
+--txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt \
+--pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl \
 --loop \
 --playback-speed 0.3
 

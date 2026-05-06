@@ -5,7 +5,7 @@ This folder is a self-contained bundle for the `roboot16` motion-to-AMP workflow
 ## Structure
 
 ```text
-roboot16_amp_project/
+roboot16/
 ├── assets/
 │   └── Roboot1.6/
 │       ├── config/

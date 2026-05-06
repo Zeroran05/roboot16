@@ -28,7 +28,7 @@ Run from the Isaac Lab repository root:
 
 ```bash
 cd /root/isaaclab
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/amp_rsl_rl/train.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
   --task Isaac-Roboot16-AMP-Flat-Project-v0 \
   --headless
 ```
@@ -36,7 +36,7 @@ cd /root/isaaclab
 If you want to override the task explicitly:
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/amp_rsl_rl/train.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
   --task Isaac-Roboot16-AMP-Flat-Project-v0 \
   --headless
 ```
@@ -45,7 +45,7 @@ If you want to override the task explicitly:
 
 ```bash
 cd /root/isaaclab
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/rsl_rl/train.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py \
   --task Isaac-Roboot16-Flat-Project-v0 \
   --headless
 ```
@@ -53,7 +53,7 @@ cd /root/isaaclab
 If you want to override the task explicitly:
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/rsl_rl/train.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py \
   --task Isaac-Roboot16-Flat-Project-v0 \
   --headless
 ```
@@ -62,7 +62,7 @@ If you want to override the task explicitly:
 
 ```bash
 cd /root/isaaclab
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/amp_rsl_rl/play.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/play.py \
   --task Isaac-Roboot16-AMP-Flat-Project-Play-v0 \
   --checkpoint /path/to/model.pt
 ```
@@ -71,7 +71,7 @@ cd /root/isaaclab
 
 ```bash
 cd /root/isaaclab
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/rsl_rl/play.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/play.py \
   --task Isaac-Roboot16-Flat-Project-Play-v0 \
   --checkpoint /path/to/model.pt
 ```
@@ -91,7 +91,7 @@ data/amp_npy/run1_5.npy
 If you regenerate debug pickles and want to rebuild the `.npy` dataset:
 
 ```bash
-cd /root/isaaclab/roboot16_amp_project
+cd /root/isaaclab/roboot16
 python3 GMR/scripts/convert_amp_debug_to_npy.py data/amp_expert/run1_1_debug.pkl data/amp_npy/run1_1.npy
 ```
 
@@ -100,6 +100,6 @@ python3 GMR/scripts/convert_amp_debug_to_npy.py data/amp_expert/run1_1_debug.pkl
 Both AMP and RSL-RL runs now write under this project directory instead of the Isaac Lab root:
 
 ```text
-roboot16_amp_project/logs/amp_rsl_rl/...
-roboot16_amp_project/logs/rsl_rl/...
+roboot16/logs/amp_rsl_rl/...
+roboot16/logs/rsl_rl/...
 ```

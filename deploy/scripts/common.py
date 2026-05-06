@@ -8,9 +8,7 @@ import numpy as np
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[1]
 DEFAULT_MODEL = PROJECT_ROOT / "assets" / "Roboot1.6" / "xml" / "scene_1.xml"
-DEFAULT_CHECKPOINT = (
-    PROJECT_ROOT / "logs" / "rsl_rl" / "roboot16_flat_project" / "2026-05-04_00-28-57" / "model_50.pt"
-)
+DEFAULT_CHECKPOINT_DIR = PROJECT_ROOT / "logs" / "rsl_rl" / "roboot16_flat_project"
 DEFAULT_EXPORT_POLICY = PROJECT_ROOT / "deploy" / "pre_train" / "roboot16" / "policy.pt"
 
 ISAACLAB_JOINT_ORDER = [
@@ -51,6 +49,16 @@ PD_GAINS = {
     "ankle_pitch": (20.0, 4.0),
     "ankle_roll": (20.0, 4.0),
 }
+
+
+def default_checkpoint() -> Path:
+    checkpoint_paths = sorted(DEFAULT_CHECKPOINT_DIR.glob("**/model_*.pt"), key=lambda path: path.stat().st_mtime)
+    if not checkpoint_paths:
+        raise FileNotFoundError(
+            "No checkpoint found under "
+            f"{DEFAULT_CHECKPOINT_DIR}. Please pass --checkpoint explicitly."
+        )
+    return checkpoint_paths[-1]
 
 
 def joint_gain(joint_name: str) -> tuple[float, float]:

@@ -1,6 +1,6 @@
 # Roboot16 AMP 常用指令
 
-本文整理了 `roboot16_amp_project` 当前最常用的一组命令，默认工作目录为：
+本文整理了 `roboot16` 当前最常用的一组命令，默认工作目录为：
 
 ```bash
 cd /root/isaaclab
@@ -28,7 +28,7 @@ cd /root/isaaclab
 带录像，录像间隔为 `2000` step：
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/amp_rsl_rl/train.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
   --task Isaac-Roboot16-AMP-Flat-Project-v0 \
   --video \
   --video_interval 2000
@@ -37,7 +37,7 @@ cd /root/isaaclab
 无界面训练：
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/amp_rsl_rl/train.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
   --task Isaac-Roboot16-AMP-Flat-Project-v0 \
   --video \
   --video_interval 2000 \
@@ -47,7 +47,7 @@ cd /root/isaaclab
 如果想额外控制每段录像长度，例如 `500` step：
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/reinforcement_learning/amp_rsl_rl/train.py \
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
   --task Isaac-Roboot16-AMP-Flat-Project-v0 \
   --video \
   --video_interval 2000 \
@@ -59,19 +59,19 @@ cd /root/isaaclab
 查看整个 AMP 训练目录：
 
 ```bash
-tensorboard --logdir /root/isaaclab/roboot16_amp_project/logs/amp_rsl_rl/roboot16_amp_flat_project
+tensorboard --logdir /root/isaaclab/roboot16/logs/amp_rsl_rl/roboot16_amp_flat_project
 ```
 
 只看某一次 run：
 
 ```bash
-tensorboard --logdir /root/isaaclab/roboot16_amp_project/logs/amp_rsl_rl/roboot16_amp_flat_project/2026-05-04_18-28-17_run1_subject2
+tensorboard --logdir /root/isaaclab/roboot16/logs/amp_rsl_rl/roboot16_amp_flat_project/2026-05-04_18-28-17_run1_subject2
 ```
 
 如果只想先找到最新一次训练目录：
 
 ```bash
-ls -lt /root/isaaclab/roboot16_amp_project/logs/amp_rsl_rl/roboot16_amp_flat_project | head
+ls -lt /root/isaaclab/roboot16/logs/amp_rsl_rl/roboot16_amp_flat_project | head
 ```
 
 ## 3. 导出 MuJoCo pkl 为 AMP expert txt
@@ -79,7 +79,7 @@ ls -lt /root/isaaclab/roboot16_amp_project/logs/amp_rsl_rl/roboot16_amp_flat_pro
 示例：把 `run1_subject2.pkl` 导出为当前 AMP 使用的 `txt`
 
 ```bash
-cd /root/isaaclab/roboot16_amp_project
+cd /root/isaaclab/roboot16
 
 python3 GMR/scripts/export_roboot16_amp_expert.py \
   --input_pkl data/source_pkl/run1_subject2.pkl \
@@ -91,7 +91,7 @@ python3 GMR/scripts/export_roboot16_amp_expert.py \
 如果想边导出边可视化：
 
 ```bash
-cd /root/isaaclab/roboot16_amp_project
+cd /root/isaaclab/roboot16
 
 python3 GMR/scripts/export_roboot16_amp_expert.py \
   --input_pkl data/source_pkl/run1_subject2.pkl \
@@ -106,24 +106,24 @@ python3 GMR/scripts/export_roboot16_amp_expert.py \
 只有 `txt`，固定 root：
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16_amp_project/data/amp_expert/run1_2.txt
+./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
+  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt
 ```
 
 同时给 `txt + pkl`，root 按 `pkl` 轨迹运动：
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16_amp_project/data/amp_expert/run1_2.txt \
-  --pkl /root/isaaclab/roboot16_amp_project/data/segments/run1_2.pkl
+./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
+  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt \
+  --pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl
 ```
 
 循环播放并放慢速度：
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16_amp_project/data/amp_expert/run1_2.txt \
-  --pkl /root/isaaclab/roboot16_amp_project/data/segments/run1_2.pkl \
+./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
+  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt \
+  --pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl \
   --loop \
   --playback-speed 0.3
 ```
@@ -131,8 +131,8 @@ python3 GMR/scripts/export_roboot16_amp_expert.py \
 只做数值比对，不开回放窗口：
 
 ```bash
-./isaaclab.sh -p roboot16_amp_project/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16_amp_project/data/amp_expert/run1_2.txt \
-  --pkl /root/isaaclab/roboot16_amp_project/data/segments/run1_2.pkl \
+./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
+  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt \
+  --pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl \
   --compare-only
 ```

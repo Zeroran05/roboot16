@@ -100,10 +100,10 @@ mjpython scripts/bvh_to_robot.py \
 
 mjpython scripts/vis_robot_motion.py \
   --robot roboot16 \
-  --robot_motion_path /Users/zhuran/GMR_autoik/retargeting_data/roboot16/run1_subject2.pkl
+  --robot_motion_path retargeting_data/roboot16/run1_subject2.pkl
 
 mjpython /Users/zhuran/GMR/scripts/shift_root_height.py \
-  /Users/zhuran/GMR_autoik/retargeting_data/roboot16/run1_subject2.pkl \
+  retargeting_data/roboot16/run1_subject2.pkl \
   --dz 0.185 \
   --inplace
 
@@ -117,7 +117,7 @@ mjpython scripts/bvh_to_robot.py \
 
 mjpython scripts/vis_robot_motion.py \
   --robot unitree_g1 \
-  --robot_motion_path /Users/zhuran/GMR_autoik/retargeting_data/unitree_g1/run1_subject2.pkl
+  --robot_motion_path retargeting_data/unitree_g1/run1_subject2.pkl
 
 
 mjpython scripts/bvh_to_robot.py \

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from common import DEFAULT_CHECKPOINT, DEFAULT_EXPORT_POLICY
+from common import DEFAULT_EXPORT_POLICY, default_checkpoint
 
 
 class Actor(torch.nn.Module):
@@ -69,7 +69,7 @@ def main() -> None:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=DEFAULT_CHECKPOINT,
+        default=None,
         help="Raw RSL-RL checkpoint (*.pt).",
     )
     parser.add_argument(
@@ -80,7 +80,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    export_policy(args.checkpoint, args.output)
+    checkpoint = args.checkpoint if args.checkpoint is not None else default_checkpoint()
+    export_policy(checkpoint, args.output)
 
 
 if __name__ == "__main__":

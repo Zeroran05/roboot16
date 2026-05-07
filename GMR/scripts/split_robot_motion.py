@@ -77,24 +77,39 @@ def main():
         for key, value in motion_data.items():
             segment_data[key] = slice_value(value, start_idx, end_idx_exclusive, total_frames)
 
-        segment_data["motion_file"] = f"{base_name}_seg{segment_id:02d}_{start_frame_1b:04d}_{end_frame_1b:04d}"
-        meta = copy.deepcopy(segment_data.get("meta", {}))
-        if isinstance(meta, dict):
-            meta["segment_start_frame_1based"] = start_frame_1b
-            meta["segment_end_frame_1based"] = end_frame_1b
-            meta["segment_length"] = end_idx_exclusive - start_idx
-            meta["segment_source_file"] = str(input_path)
-        segment_data["meta"] = meta
-
         # 支持自定义输出名，仅在只切一个片段时生效
         if args.output_name is not None:
             if len(args.segment) == 1:
                 output_path = output_dir / args.output_name
             else:
                 print("[WARN] --output_name 仅在切分单个片段时生效，已忽略。")
-                output_path = output_dir / f"{segment_data['motion_file']}.pkl"
+                output_path = output_dir / f"{base_name}_seg{segment_id:02d}_{start_frame_1b:04d}_{end_frame_1b:04d}.pkl"
         else:
-            output_path = output_dir / f"{segment_data['motion_file']}.pkl"
+            output_path = output_dir / f"{base_name}_seg{segment_id:02d}_{start_frame_1b:04d}_{end_frame_1b:04d}.pkl"
+
+        output_stem = output_path.stem
+        source_motion_file = motion_data.get("motion_file", input_path.stem)
+        clip_info = {
+            "source_file": str(input_path),
+            "source_motion_file": source_motion_file,
+            "output_file": str(output_path),
+            "output_motion_file": output_stem,
+            "segment_id": segment_id,
+            "segment_range_1based": [start_frame_1b, end_frame_1b],
+            "segment_range_text": f"{start_frame_1b}:{end_frame_1b}",
+            "segment_start_frame_1based": start_frame_1b,
+            "segment_end_frame_1based": end_frame_1b,
+            "segment_length": end_idx_exclusive - start_idx,
+        }
+
+        segment_data["motion_file"] = output_stem
+        segment_data["clip_info"] = clip_info
+
+        meta = copy.deepcopy(segment_data.get("meta", {}))
+        if isinstance(meta, dict):
+            meta.update(clip_info)
+        segment_data["meta"] = meta
+
         with output_path.open("wb") as f:
             pickle.dump(segment_data, f)
 

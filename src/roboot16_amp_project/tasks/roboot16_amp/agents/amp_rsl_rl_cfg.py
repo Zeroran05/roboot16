@@ -3,8 +3,51 @@ from __future__ import annotations
 from roboot16_amp_project.paths import AMP_EXPERT_DIR
 
 
-AMP_TASK_REWARD_LERP = 0.78 #0.7
-AMP_HIGH_SPEED_DIR = AMP_EXPERT_DIR / "run_high_speed"
+AMP_TASK_REWARD_LERP = 0.5 #0.7
+AMP_DATASET_ROOT = AMP_EXPERT_DIR
+
+AMP_HIGH_SPEED_DATASETS = [
+    "run_high_speed/run1_5",
+    "run_high_speed/run1_5_mirrored",
+    "run_high_speed/run1_7",
+    "run_high_speed/run1_7_mirrored",
+    "run_high_speed/run2_7",
+    "run_high_speed/run2_7_mirrored",
+    "run_high_speed/run2_10",
+    "run_high_speed/run2_10_mirrored",
+]
+
+AMP_LOW_SPEED_DATASETS = [
+    "run_low_speed/run1_1",
+    "run_low_speed/run1_1_mirrored",
+    "run_low_speed/run1_3",
+    "run_low_speed/run1_3_mirrored",
+    "run_low_speed/run1_4",
+    "run_low_speed/run1_4_mirrored",
+    "run_low_speed/run1_6",
+    "run_low_speed/run1_6_mirrored",
+    "run_low_speed/run2_1",
+    "run_low_speed/run2_1_mirrored",
+    "run_low_speed/run2_2",
+    "run_low_speed/run2_2_mirrored",
+    "run_low_speed/run2_3",
+    "run_low_speed/run2_3_mirrored",
+    "run_low_speed/run2_4",
+    "run_low_speed/run2_4_mirrored",
+    "run_low_speed/run2_5",
+    "run_low_speed/run2_5_mirrored",
+    "run_low_speed/run2_6",
+    "run_low_speed/run2_6_mirrored",
+    "run_low_speed/run2_8",
+    "run_low_speed/run2_8_mirrored",
+    "run_low_speed/run2_9",
+    "run_low_speed/run2_9_mirrored",
+    "run_low_speed/stand",
+    "run_low_speed/stand_mirrored",
+]
+
+AMP_DATASETS = AMP_HIGH_SPEED_DATASETS + AMP_LOW_SPEED_DATASETS
+AMP_DATASET_WEIGHT = 1.0 / len(AMP_DATASETS)
 
 
 Roboot16FlatAMPRunnerCfg = {
@@ -49,22 +92,13 @@ Roboot16FlatAMPRunnerCfg = {
     },
     "discriminator": {
         "hidden_dims": [1024, 512, 256],
-        "reward_scale": 0.3,
+        "reward_scale": 1,# 0.3，奖励太小，提高奖励scale
         "loss_type": "LSGAN",
         "empirical_normalization": True,
     },
     "dataset": {
-        "amp_data_path": str(AMP_HIGH_SPEED_DIR),
-        "datasets": {
-            "run1_5": 0.125,
-            "run1_5_mirrored": 0.125,
-            "run1_7": 0.125,
-            "run1_7_mirrored": 0.125,
-            "run2_7": 0.125,
-            "run2_7_mirrored": 0.125,
-            "run2_10": 0.125,
-            "run2_10_mirrored": 0.125,
-        },
+        "amp_data_path": str(AMP_DATASET_ROOT),
+        "datasets": {name: AMP_DATASET_WEIGHT for name in AMP_DATASETS},
         "slow_down_factor": 1,
     },
 }

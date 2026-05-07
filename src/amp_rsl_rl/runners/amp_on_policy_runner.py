@@ -558,6 +558,7 @@ class AMPOnPolicyRunner:
         iteration_time = locs["collection_time"] + locs["learn_time"]
 
         ep_string = ""
+        tracked_episode_rewards = {}
         if locs["ep_infos"]:
             for key in locs["ep_infos"][0]:
                 infotensor = torch.tensor([], device=self.device)
@@ -571,6 +572,7 @@ class AMPOnPolicyRunner:
                         ep_info[key] = ep_info[key].unsqueeze(0)
                     infotensor = torch.cat((infotensor, ep_info[key].to(self.device)))
                 value = torch.mean(infotensor)
+                tracked_episode_rewards[key] = value.item()
                 # log to logger and terminal
                 if "/" in key:
                     self.writer.add_scalar(key, value, locs["it"])
@@ -624,6 +626,8 @@ class AMPOnPolicyRunner:
             self.writer.add_video_files(self.log_dir, step=locs["it"])
         self.writer.add_scalar("Perf/learning_time", locs["learn_time"], locs["it"])
         if len(locs["rewbuffer"]) > 0:
+            track_lin_vel_ep_reward = tracked_episode_rewards.get("Episode_Reward/track_lin_vel_xy_exp")
+            track_ang_vel_ep_reward = tracked_episode_rewards.get("Episode_Reward/track_ang_vel_z_exp")
             self.writer.add_scalar(
                 "Train/mean_reward", statistics.mean(locs["rewbuffer"]), locs["it"]
             )
@@ -652,6 +656,18 @@ class AMPOnPolicyRunner:
                 locs["mean_knee_lateral_separation_log"],
                 locs["it"],
             )
+            if track_lin_vel_ep_reward is not None:
+                self.writer.add_scalar(
+                    "Train/track_lin_vel_xy_reward",
+                    track_lin_vel_ep_reward,
+                    locs["it"],
+                )
+            if track_ang_vel_ep_reward is not None:
+                self.writer.add_scalar(
+                    "Train/track_ang_vel_z_reward",
+                    track_ang_vel_ep_reward,
+                    locs["it"],
+                )
             if self.logger_type not in (
                 "wandb",
                 "mlflow",
@@ -687,6 +703,10 @@ class AMPOnPolicyRunner:
                 f"""{'Mean root height:':>{pad}} {locs['mean_root_height_log']:.4f}\n"""
                 f"""{'Mean knee lateral sep:':>{pad}} {locs['mean_knee_lateral_separation_log']:.4f}\n"""
             )
+            if track_lin_vel_ep_reward is not None:
+                log_string += f"""{'Track lin vel reward:':>{pad}} {track_lin_vel_ep_reward:.4f}\n"""
+            if track_ang_vel_ep_reward is not None:
+                log_string += f"""{'Track ang vel reward:':>{pad}} {track_ang_vel_ep_reward:.4f}\n"""
             #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
             #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")
         else:

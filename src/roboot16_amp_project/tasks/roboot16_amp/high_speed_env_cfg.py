@@ -137,7 +137,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
         weight=-3.0,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
-            "threshold": 0.4,
+            "threshold": 0.44,
         },
     )
     knee_lateral_separation = RewTerm(
@@ -153,7 +153,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
                     "right_ankle_roll_link",
                 ],
             ),
-            "min_knee_y_sep": 0.4,
+            "min_knee_y_sep": 0.42,
             "min_ankle_y_sep": 0.0,
         },
     )
@@ -203,27 +203,27 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "attr_path": "ranges.lin_vel_x",
             "schedule_name": "lin_vel_x",
             "schedule": [
-                (0, (0.5, 1.5)),
-                (16_800, (1.0, 2.0)),
-                (28_800, (1.5, 2.5)),
-                (40_800, (2.0, 3.0)),
-                (52_800, (2.3, 3.3)),
-                (64_800, (2.6, 3.6)),
-                (72_800, (3.0, 4.0)),
-                (84_800, (3.3, 4.3))
+                (0, (0.0, 1.0)),
+                (16_800, (0.0, 1.5)),
+                (28_800, (0.0, 2.0)),
+                (40_800, (0.0, 2.5)),
+                (52_800, (0.0, 3.0)),
+                (64_800, (0.0, 3.5)),
+                (76_800, (0.0, 4.0)),
+                (88_800, (0.0, 4.5))
             ],
         },
     )
-    ang_vel_z_range = CurrTerm(
-        func=_apply_command_term_schedule,
-        params={
-            "attr_path": "ranges.ang_vel_z",
-            "schedule_name": "ang_vel_z",
-            "schedule": [
-                (0, (-0.2, 0.2))
-            ],
-        },
-    )
+    # ang_vel_z_range = CurrTerm(
+    #     func=_apply_command_term_schedule,
+    #     params={
+    #         "attr_path": "ranges.ang_vel_z",
+    #         "schedule_name": "ang_vel_z",
+    #         "schedule": [
+    #             (0, (-0.2, 0.2))
+    #         ],
+    #     },
+    # )
     standing_env_ratio = CurrTerm(
         func=_apply_command_term_schedule,
         params={
@@ -231,10 +231,10 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "schedule_name": "rel_standing_envs",
             "schedule": [
                 (0, 0.2),
-                (16_800, 0.15),
-                (28_800, 0.10),
-                (40_800, 0.05),
-                (52_800, 0.02)
+                (16_800, 0.18),
+                (28_800, 0.15),
+                (40_800, 0.12),
+                (52_800, 0.1)
             ],
         },
     )
@@ -246,14 +246,13 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "modify_params": {
                 "schedule_name": "track_lin_vel_xy_weight",
                 "schedule": [
-                    (0, 2.0),
-                    (16_800, 2.4),
-                    (28_800, 3.0),
-                    (40_800, 3.4),
-                    (52_800, 3.8),
-                    (64_800, 4.2),
-                    (72_800, 4.6),
-                    (84_800, 5.0)
+                    (0, 1.8),
+                    (16_800, 2.0),
+                    (28_800, 2.4),
+                    (40_800, 2.8),
+                    (52_800, 3.2),
+                    (64_800, 3.6),
+                    (72_800, 4.0)
                 ],
             },
         },
@@ -276,19 +275,19 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             },
         },
     )
-    track_ang_vel_z_weight = CurrTerm(
-        func=env_mdp.modify_term_cfg,
-        params={
-            "address": "rewards.track_ang_vel_z_exp.weight",
-            "modify_fn": _modify_value_by_schedule,
-            "modify_params": {
-                "schedule_name": "track_ang_vel_z_weight",
-                "schedule": [
-                    (0, 1.2)
-                ],
-            },
-        },
-    )
+    # track_ang_vel_z_weight = CurrTerm(
+    #     func=env_mdp.modify_term_cfg,
+    #     params={
+    #         "address": "rewards.track_ang_vel_z_exp.weight",
+    #         "modify_fn": _modify_value_by_schedule,
+    #         "modify_params": {
+    #             "schedule_name": "track_ang_vel_z_weight",
+    #             "schedule": [
+    #                 (0, 1.2)
+    #             ],
+    #         },
+    #     },
+    # )
     # track_ang_vel_z_std = CurrTerm(
     #     func=env_mdp.modify_term_cfg,
     #     params={
@@ -371,7 +370,7 @@ class Roboot16AmpHighSpeedEnvCfg(Roboot16AmpFlatEnvCfg):
         self.commands.base_velocity.rel_standing_envs = 0.2
         self.commands.base_velocity.rel_heading_envs = 0.0
         self.commands.base_velocity.heading_command = False
-        self.commands.base_velocity.ranges.lin_vel_x = (0.5, 1.5)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-0.2, 0.2)
         if hasattr(self.commands.base_velocity.ranges, "heading"):

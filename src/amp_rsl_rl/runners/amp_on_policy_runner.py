@@ -52,6 +52,11 @@ def _set_nested_attr(obj, attr_path: str, value) -> None:
     setattr(target, parts[-1], value)
 
 
+def _unwrap_env(env):
+    """Return the underlying Isaac Lab env when wrapped by an RL vec wrapper."""
+    return getattr(env, "unwrapped", env)
+
+
 def resolve_class(class_name: str) -> type:
     """Resolve a class by name.
 
@@ -196,6 +201,7 @@ class AMPOnPolicyRunner:
         self.dataset_cfg = train_cfg["dataset"]
         self.device = device
         self.env = env
+        self.base_env = _unwrap_env(env)
         self.amp_task_reward_lerp = float(self.cfg.get("amp_task_reward_lerp", 0.5))
         self.amp_task_reward_lerp = min(max(self.amp_task_reward_lerp, 0.0), 1.0)
 
@@ -444,7 +450,7 @@ class AMPOnPolicyRunner:
             with torch.inference_mode():
                 for _ in range(self.num_steps_per_env):
                     actions = self.alg.act(obs)
-                    command_speed = self.env.command_manager.get_command("base_velocity")[:, 0].to(self.device)
+                    command_speed = self.base_env.command_manager.get_command("base_velocity")[:, 0].to(self.device)
                     self.alg.act_amp(amp_obs, command_speed=command_speed)
                     obs, rewards, dones, extras = self.env.step(
                         actions.to(self.env.device)

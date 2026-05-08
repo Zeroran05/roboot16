@@ -446,6 +446,8 @@ class AMPOnPolicyRunner:
             mean_foot_distance_log = 0
             mean_root_height_log = 0
             mean_knee_lateral_separation_log = 0
+            mean_command_speed_abs_log = 0
+            mean_zero_command_ratio_log = 0
 
             with torch.inference_mode():
                 for _ in range(self.num_steps_per_env):
@@ -486,6 +488,13 @@ class AMPOnPolicyRunner:
                     mean_task_reward_log += task_rewards.mean().item()
                     mean_style_reward_log += style_rewards.mean().item()
                     mean_disc_logit_log += disc_logits.mean().item()
+                    mean_command_speed_abs_log += command_speed.abs().mean().item()
+                    mean_zero_command_ratio_log += (
+                        (command_speed.abs() <= self.dataset_cfg.get("stand_only_speed_threshold", 1.0e-6))
+                        .float()
+                        .mean()
+                        .item()
+                    )
                     mean_foot_distance = self._compute_mean_foot_distance()
                     if mean_foot_distance is not None:
                         mean_foot_distance_log += mean_foot_distance.item()
@@ -531,6 +540,8 @@ class AMPOnPolicyRunner:
             mean_foot_distance_log /= self.num_steps_per_env
             mean_root_height_log /= self.num_steps_per_env
             mean_knee_lateral_separation_log /= self.num_steps_per_env
+            mean_command_speed_abs_log /= self.num_steps_per_env
+            mean_zero_command_ratio_log /= self.num_steps_per_env
 
             (
                 mean_value_loss,
@@ -671,6 +682,28 @@ class AMPOnPolicyRunner:
                 locs["mean_knee_lateral_separation_log"],
                 locs["it"],
             )
+            self.writer.add_scalar(
+                "Train/mean_command_speed_abs",
+                locs["mean_command_speed_abs_log"],
+                locs["it"],
+            )
+            self.writer.add_scalar(
+                "Train/mean_zero_command_ratio",
+                locs["mean_zero_command_ratio_log"],
+                locs["it"],
+            )
+            amp_debug_sample = getattr(self.alg, "last_amp_debug_sample", None)
+            if amp_debug_sample is not None:
+                self.writer.add_scalar(
+                    "Train/debug_env0_command_speed",
+                    amp_debug_sample["policy_command_speed"],
+                    locs["it"],
+                )
+                self.writer.add_scalar(
+                    "Train/debug_env0_expert_clip_speed",
+                    amp_debug_sample["expert_clip_speed"],
+                    locs["it"],
+                )
             if track_lin_vel_ep_reward is not None:
                 self.writer.add_scalar(
                     "Train/track_lin_vel_xy_reward",
@@ -699,6 +732,7 @@ class AMPOnPolicyRunner:
                 )
 
         str = f" \033[1m Learning iteration {locs['it']}/{locs['tot_iter']} \033[0m "
+        amp_debug_sample = getattr(self.alg, "last_amp_debug_sample", None)
 
         if len(locs["rewbuffer"]) > 0:
             log_string = (
@@ -717,11 +751,19 @@ class AMPOnPolicyRunner:
                 f"""{'Mean foot distance:':>{pad}} {locs['mean_foot_distance_log']:.4f}\n"""
                 f"""{'Mean root height:':>{pad}} {locs['mean_root_height_log']:.4f}\n"""
                 f"""{'Mean knee lateral sep:':>{pad}} {locs['mean_knee_lateral_separation_log']:.4f}\n"""
+                f"""{'Mean |cmd vx|:':>{pad}} {locs['mean_command_speed_abs_log']:.4f}\n"""
+                f"""{'Zero-cmd ratio:':>{pad}} {locs['mean_zero_command_ratio_log']:.4f}\n"""
             )
             if track_lin_vel_ep_reward is not None:
                 log_string += f"""{'Track lin vel reward:':>{pad}} {track_lin_vel_ep_reward:.4f}\n"""
             if track_ang_vel_ep_reward is not None:
                 log_string += f"""{'Track ang vel reward:':>{pad}} {track_ang_vel_ep_reward:.4f}\n"""
+            if amp_debug_sample is not None:
+                log_string += (
+                    f"""{'AMP env0 cmd vx:':>{pad}} {amp_debug_sample['policy_command_speed']:.4f}\n"""
+                    f"""{'AMP env0 clip:':>{pad}} {amp_debug_sample['expert_clip_name']}\n"""
+                    f"""{'AMP env0 clip speed:':>{pad}} {amp_debug_sample['expert_clip_speed']:.4f}\n"""
+                )
             #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
             #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")
         else:
@@ -739,7 +781,15 @@ class AMPOnPolicyRunner:
                 f"""{'Mean foot distance:':>{pad}} {locs['mean_foot_distance_log']:.4f}\n"""
                 f"""{'Mean root height:':>{pad}} {locs['mean_root_height_log']:.4f}\n"""
                 f"""{'Mean knee lateral sep:':>{pad}} {locs['mean_knee_lateral_separation_log']:.4f}\n"""
+                f"""{'Mean |cmd vx|:':>{pad}} {locs['mean_command_speed_abs_log']:.4f}\n"""
+                f"""{'Zero-cmd ratio:':>{pad}} {locs['mean_zero_command_ratio_log']:.4f}\n"""
             )
+            if amp_debug_sample is not None:
+                log_string += (
+                    f"""{'AMP env0 cmd vx:':>{pad}} {amp_debug_sample['policy_command_speed']:.4f}\n"""
+                    f"""{'AMP env0 clip:':>{pad}} {amp_debug_sample['expert_clip_name']}\n"""
+                    f"""{'AMP env0 clip speed:':>{pad}} {amp_debug_sample['expert_clip_speed']:.4f}\n"""
+                )
             #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
             #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")
 

@@ -145,6 +145,7 @@ class AMP_PPO:
         self.max_grad_norm: float = max_grad_norm
         self.use_clipped_value_loss: bool = use_clipped_value_loss
         self.use_smooth_ratio_clipping: bool = use_smooth_ratio_clipping
+        self.last_amp_debug_sample: dict[str, float | str | int] | None = None
 
     def init_storage(
         self,
@@ -353,7 +354,9 @@ class AMP_PPO:
 
             hidden_state_actor, hidden_state_critic = (None, None)
             policy_state, policy_next_state, policy_command_speed = sample_amp_policy
-            expert_state, expert_next_state = self.amp_data.sample_conditioned(policy_command_speed)
+            expert_state, expert_next_state, expert_clip_idx = self.amp_data.sample_conditioned(
+                policy_command_speed, return_clip_indices=True
+            )
             if hidden_states_batch is not None:
                 hidden_state_actor, hidden_state_critic = hidden_states_batch
 
@@ -442,6 +445,15 @@ class AMP_PPO:
             expert_state = expert_state.to(self.device)
             expert_next_state = expert_next_state.to(self.device)
             expert_command_speed = policy_command_speed
+
+            if expert_clip_idx.numel() > 0 and policy_command_speed.numel() > 0:
+                debug_idx = int(expert_clip_idx[0].item())
+                self.last_amp_debug_sample = {
+                    "policy_command_speed": float(policy_command_speed[0].item()),
+                    "expert_clip_index": debug_idx,
+                    "expert_clip_name": self.amp_data.dataset_names[debug_idx],
+                    "expert_clip_speed": float(self.amp_data.dataset_speeds[debug_idx]),
+                }
 
             # Keep raw tensors for normalizer updates
             policy_state_raw = policy_state.detach().clone()

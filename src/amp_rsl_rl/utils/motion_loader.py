@@ -300,6 +300,7 @@ class AMPLoader:
         # ─── Parse dataset names and weights ───
         dataset_names = list(datasets.keys())
         dataset_weights = list(datasets.values())
+        self.dataset_names = dataset_names
 
         # ─── Build union of all joint names if not provided ───
         if expected_joint_names is None:
@@ -731,7 +732,8 @@ class AMPLoader:
     def sample_conditioned(
         self,
         command_speeds: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return_clip_indices: bool = False,
+    ) -> Tuple[torch.Tensor, torch.Tensor] | Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Sample expert transitions conditioned on commanded forward speed.
 
         Each command speed first samples a clip using a soft weighting over clip-level
@@ -747,10 +749,11 @@ class AMPLoader:
         log_base = torch.log(self.dataset_weights + 1.0e-12).unsqueeze(0)
         speed_distance = torch.abs(command_speeds.unsqueeze(1) - self.clip_speeds.unsqueeze(0))
         logits = log_base - speed_distance / tau
-        if torch.any(torch.abs(command_speeds) <= self.stand_only_speed_threshold):
-            stand_mask = self.clip_is_stand.unsqueeze(0).expand(command_speeds.shape[0], -1)
-            near_zero_mask = (torch.abs(command_speeds) <= self.stand_only_speed_threshold).unsqueeze(1)
-            logits = torch.where(near_zero_mask & (~stand_mask), torch.full_like(logits, -1.0e9), logits)
+        stand_mask = self.clip_is_stand.unsqueeze(0).expand(command_speeds.shape[0], -1)
+        near_zero_mask = (torch.abs(command_speeds) <= self.stand_only_speed_threshold).unsqueeze(1)
+        non_zero_mask = ~near_zero_mask
+        logits = torch.where(near_zero_mask & (~stand_mask), torch.full_like(logits, -1.0e9), logits)
+        logits = torch.where(non_zero_mask & stand_mask, torch.full_like(logits, -1.0e9), logits)
         clip_weights = torch.softmax(logits, dim=1)
         clip_idx = torch.multinomial(clip_weights, num_samples=1, replacement=True).squeeze(1)
 
@@ -760,6 +763,8 @@ class AMPLoader:
             torch.rand(clip_idx.shape[0], device=self.device) * clip_lengths.to(torch.float32)
         ).to(torch.long)
         frame_idx = clip_starts + local_idx
+        if return_clip_indices:
+            return self.all_obs[frame_idx], self.all_next_obs[frame_idx], clip_idx
         return self.all_obs[frame_idx], self.all_next_obs[frame_idx]
 
     def get_state_for_reset(self, number_of_samples: int) -> Tuple[torch.Tensor, ...]:

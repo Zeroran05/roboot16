@@ -387,6 +387,10 @@ class AMPLoader:
             dtype=torch.bool,
             device=self.device,
         )
+        self.clip_lengths_tensor = torch.tensor(self.clip_lengths, dtype=torch.long, device=self.device)
+        self.clip_start_indices_tensor = torch.tensor(
+            self.clip_start_indices, dtype=torch.long, device=self.device
+        )
 
     def _resample_data_Rn(
         self,
@@ -750,12 +754,12 @@ class AMPLoader:
         clip_weights = torch.softmax(logits, dim=1)
         clip_idx = torch.multinomial(clip_weights, num_samples=1, replacement=True).squeeze(1)
 
-        frame_idx = torch.empty_like(clip_idx)
-        for i, clip_id in enumerate(clip_idx.tolist()):
-            start = self.clip_start_indices[clip_id]
-            length = self.clip_lengths[clip_id]
-            local_idx = torch.randint(0, length, (1,), device=self.device).item()
-            frame_idx[i] = start + local_idx
+        clip_starts = self.clip_start_indices_tensor[clip_idx]
+        clip_lengths = self.clip_lengths_tensor[clip_idx]
+        local_idx = torch.floor(
+            torch.rand(clip_idx.shape[0], device=self.device) * clip_lengths.to(torch.float32)
+        ).to(torch.long)
+        frame_idx = clip_starts + local_idx
         return self.all_obs[frame_idx], self.all_next_obs[frame_idx]
 
     def get_state_for_reset(self, number_of_samples: int) -> Tuple[torch.Tensor, ...]:

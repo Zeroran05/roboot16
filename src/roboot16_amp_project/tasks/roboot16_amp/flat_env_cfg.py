@@ -229,6 +229,7 @@ class Roboot16AmpFlatEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.scene.robot = ROBOOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.commands.base_velocity.debug_vis = True
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
         self.scene.terrain.physics_material.static_friction = 1.1

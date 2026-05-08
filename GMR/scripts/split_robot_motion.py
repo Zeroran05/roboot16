@@ -29,6 +29,8 @@ def parse_segment(segment_text):
 def slice_value(value, start_idx, end_idx_exclusive, total_frames):
     if isinstance(value, np.ndarray) and value.shape[:1] == (total_frames,):
         return value[start_idx:end_idx_exclusive].copy()
+    if isinstance(value, list) and len(value) == total_frames:
+        return copy.deepcopy(value[start_idx:end_idx_exclusive])
     return copy.deepcopy(value)
 
 
@@ -57,7 +59,7 @@ def main():
     with input_path.open("rb") as f:
         motion_data = pickle.load(f)
 
-    total_frames = int(motion_data["root_pos"].shape[0])
+    total_frames = int(len(motion_data["root_pos"]))
     base_name = input_path.stem
 
     print(f"Loaded {input_path}")

@@ -65,14 +65,14 @@
             <inertial pos="5.0405e-05 0.003536 -0.17718" quat="0.706847 0.000100203 0.000157186 0.707366" mass="2.865" diaginertia="0.0070209 0.0068188 0.000931829"/>
             <joint name="right_hip_yaw_joint" axis="0 0 1" range="-2.6 2.6"/>
             <geom class="visual" material="ice" mesh="left_hip_yaw_link"/>
-            <geom class="collision" type="cylinder" pos="0 0 -0.1" size="0.07 0.15"/>
+            <geom class="collision" type="cylinder" pos="0 0 -0.15" size="0.055 0.11"/>
 
             <body name="right_knee_link" pos="0 -0.0365 -0.298">
               <inertial pos="-0.01609 0.029412 -0.20201" quat="0.999949 0.000804618 0.00958423 -0.00317808" mass="2.161" diaginertia="0.011596 0.011377 0.000743545"/>
               <joint name="right_knee_joint" axis="0 1 0" range="-0.2 1.8"/>
               <geom class="visual" material="ice" mesh="left_knee_link"/>
-              <geom class="collision" type="box" pos="0 0.03 -0.22" size="0.06 0.045 0.14"/>
-              <geom name="right_shank_collision" class="collision" type="capsule" fromto="0 0.018 -0.06 0 0.018 -0.37" size="0.038" rgba="0.8 0.5 0.2 0.12"/>
+              <geom class="collision" type="box" pos="0 0.028 -0.19" size="0.045 0.032 0.08"/>
+              <geom name="right_shank_collision" class="collision" type="capsule" fromto="0 0.018 -0.11 0 0.018 -0.36" size="0.03" rgba="0.8 0.5 0.2 0.12"/>
 
               <body name="right_ankle_pitch_link" pos="-0.013 0.030625 -0.44831">
                 <inertial pos="0 0 0" quat="0.504216 0.504216 -0.495749 0.495749" mass="0.007" diaginertia="1.18541e-06 7.84935e-07 5.3402e-07"/>
@@ -87,15 +87,22 @@
                     name="right_foot_fore_collision"
                     class="foot_collision"
                     type="box"
-                    pos="0.055 0 -0.048"
-                    size="0.075 0.045 0.008"
+                    pos="0.072 0 -0.048"
+                    size="0.06 0.045 0.008"
+                    rgba="0.2 0.8 0.2 0.2"/>
+                  <geom
+                    name="right_foot_rear_collision"
+                    class="foot_collision"
+                    type="box"
+                    pos="-0.078 0 -0.0458"
+                    size="0.022 0.034 0.008"
                     rgba="0.2 0.8 0.2 0.2"/>
                   <geom
                     name="right_foot_heel_collision"
                     class="foot_collision"
                     type="box"
-                    pos="-0.035 0 -0.048"
-                    size="0.04 0.038 0.008"
+                    pos="-0.045 0 -0.042"
+                    size="0.03 0.038 0.006"
                     rgba="0.2 0.8 0.2 0.2"/>
                 </body>
               </body>
@@ -120,14 +127,14 @@
             <inertial pos="5.0461e-05 -0.003536 -0.17717" quat="0.707365 0.000157066 0.000100226 0.706849" mass="2.865" diaginertia="0.0070209 0.0068188 0.000931829"/>
             <joint name="left_hip_yaw_joint" axis="0 0 -1" range="-2.6 2.6"/>
             <geom class="visual" material="ice" mesh="right_hip_yaw_link"/>
-            <geom class="collision" type="cylinder" pos="0 0 -0.1" size="0.07 0.15"/>
+            <geom class="collision" type="cylinder" pos="0 0 -0.15" size="0.055 0.11"/>
 
             <body name="left_knee_link" pos="0 0.035647 -0.29631">
               <inertial pos="-0.01609 -0.028559 -0.2037" quat="0.999949 -0.000804527 0.00958423 0.00317776" mass="2.161" diaginertia="0.011596 0.011377 0.000743545"/>
               <joint name="left_knee_joint" axis="0 1 0" range="-0.2 1.8"/>
               <geom class="visual" material="ice" mesh="right_knee_link"/>
-              <geom class="collision" type="box" pos="0 -0.03 -0.22" size="0.06 0.045 0.14"/>
-              <geom name="left_shank_collision" class="collision" type="capsule" fromto="0 -0.018 -0.06 0 -0.018 -0.37" size="0.038" rgba="0.8 0.5 0.2 0.12"/>
+              <geom class="collision" type="box" pos="0 -0.028 -0.19" size="0.045 0.032 0.08"/>
+              <geom name="left_shank_collision" class="collision" type="capsule" fromto="0 -0.018 -0.11 0 -0.018 -0.36" size="0.03" rgba="0.8 0.5 0.2 0.12"/>
 
               <body name="left_ankle_pitch_link" pos="-0.013 -0.029772 -0.45">
                 <inertial pos="0 0 0" quat="0.504216 0.504216 -0.495749 0.495749" mass="0.007" diaginertia="1.18541e-06 7.84935e-07 5.3402e-07"/>
@@ -142,15 +149,22 @@
                     name="left_foot_fore_collision"
                     class="foot_collision"
                     type="box"
-                    pos="0.055 0 -0.048"
-                    size="0.075 0.045 0.008"
+                    pos="0.072 0 -0.048"
+                    size="0.06 0.045 0.008"
+                    rgba="0.2 0.8 0.2 0.2"/>
+                  <geom
+                    name="left_foot_rear_collision"
+                    class="foot_collision"
+                    type="box"
+                    pos="-0.078 0 -0.0458"
+                    size="0.022 0.034 0.008"
                     rgba="0.2 0.8 0.2 0.2"/>
                   <geom
                     name="left_foot_heel_collision"
                     class="foot_collision"
                     type="box"
-                    pos="-0.035 0 -0.048"
-                    size="0.04 0.038 0.008"
+                    pos="-0.045 0 -0.042"
+                    size="0.03 0.038 0.006"
                     rgba="0.2 0.8 0.2 0.2"/>
                 </body>
               </body>
@@ -210,7 +224,7 @@
     <key
       name="home"
       qpos="0 0 0.99 1 0 0 0
-            -0.28 -0.28 0 0 0 0
-            0.58 0.58 -0.32 -0.32 0 0"/>
+            0 0 0 0 0 0
+            0 0 0 0 0 0"/>
   </keyframe>
 </mujoco>

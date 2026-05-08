@@ -125,3 +125,9 @@ mjpython scripts/bvh_to_robot.py \
   --format lafan1 \
   --robot unitree_g1_auto \
   --save_path retargeting_data/unitree_g1_auto/run1_subject2_auto.pkl
+
+
+
+
+  walk1_subject1:
+  Mark1: frame 0/7834;Mark 2: frame 66/7834 | time 00:00:02.167 (2.167s);Mark 3: frame 122/7834 | time 00:00:04.033 (4.033s);Mark 4: frame 241/7834 | time 00:00:08.000 (8.000s)Mark 5: frame 2486/7834 | time 00:01:22.833 (82.833s)Mark 6: frame 2557/7834 | time 00:01:25.199 (85.199s)Mark 7: frame 3216/7834 | time 00:01:47.166 (107.166s)Mark 8: frame 3273/7834 | time 00:01:49.066 (109.066s)Mark 9: frame 3331/7834 | time 00:01:50.999 (110.999s)Mark 10: frame 3367/7834 | time 00:01:52.199 (112.199s)Mark 11: frame 3454/7834 | time 00:01:55.099 (115.099s)Mark 12: frame 3530/7834 | time 00:01:57.632 (117.632s)

@@ -29,6 +29,8 @@ class Discriminator(nn.Module):
     def __init__(
         self,
         input_dim: int,
+        amp_obs_dim: int,
+        condition_dim: int,
         hidden_layer_sizes: list[int],
         reward_scale: float,
         device: str | torch.device = "cpu",
@@ -40,6 +42,8 @@ class Discriminator(nn.Module):
 
         self.device = torch.device(device)
         self.input_dim = input_dim
+        self.amp_obs_dim = amp_obs_dim
+        self.condition_dim = condition_dim
         self.reward_scale = reward_scale
         layers = []
         curr_in_dim = input_dim
@@ -54,7 +58,6 @@ class Discriminator(nn.Module):
         self.linear = nn.Linear(final_in_dim, 1)
 
         self.empirical_normalization = empirical_normalization
-        amp_obs_dim = input_dim // 2
         if empirical_normalization:
             self.amp_normalizer = EmpiricalNormalization(shape=[amp_obs_dim])
         else:
@@ -70,7 +73,29 @@ class Discriminator(nn.Module):
             )
         self.loss_fun = torch.nn.MSELoss()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def _build_input(
+        self,
+        state: torch.Tensor,
+        next_state: torch.Tensor,
+        condition: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        state = self.amp_normalizer(state)
+        next_state = self.amp_normalizer(next_state)
+        if self.condition_dim > 0:
+            if condition is None:
+                raise ValueError("Conditional discriminator requires a condition tensor.")
+            condition = condition.to(state.device, dtype=state.dtype).reshape(state.shape[0], self.condition_dim)
+            return torch.cat([state, next_state, condition], dim=-1)
+        return torch.cat([state, next_state], dim=-1)
+
+    def forward(
+        self,
+        x: torch.Tensor | None = None,
+        *,
+        state: torch.Tensor | None = None,
+        next_state: torch.Tensor | None = None,
+        condition: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """Forward pass through the discriminator.
 
         Args:
@@ -79,13 +104,12 @@ class Discriminator(nn.Module):
         Returns:
             Tensor: Discriminator output logits/scores.
         """
-
-        # Normalize AMP observations. If not enabled the normalizer is identity.
-        # split state and next_state and apply normalization
-        state, next_state = torch.split(x, self.input_dim // 2, dim=-1)
-        state = self.amp_normalizer(state)
-        next_state = self.amp_normalizer(next_state)
-        x = torch.cat([state, next_state], dim=-1)
+        if x is None:
+            if state is None or next_state is None:
+                raise ValueError("Either `x` or both `state` and `next_state` must be provided.")
+            x = self._build_input(state, next_state, condition)
+        elif state is not None or next_state is not None or condition is not None:
+            raise ValueError("Provide either pre-concatenated `x` or structured inputs, not both.")
 
         h = self.trunk(x)
         if self.use_minibatch_std:
@@ -104,6 +128,7 @@ class Discriminator(nn.Module):
         self,
         state: torch.Tensor,
         next_state: torch.Tensor,
+        condition: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Predict pure AMP/style reward using TienKung-Lab's bounded reward.
 
@@ -115,7 +140,7 @@ class Discriminator(nn.Module):
             Tensor: Computed adversarial reward.
         """
         with torch.no_grad():
-            discriminator_logit = self.forward(torch.cat([state, next_state], dim=-1))
+            discriminator_logit = self.forward(state=state, next_state=next_state, condition=condition)
             reward = self.reward_scale * torch.clamp(
                 1 - 0.25 * torch.square(discriminator_logit - 1), min=0
             )
@@ -127,10 +152,11 @@ class Discriminator(nn.Module):
         next_state: torch.Tensor,
         task_reward: torch.Tensor,
         task_reward_lerp: float,
+        condition: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Predict mixed AMP reward using TienKung-Lab's reward formulation."""
         with torch.no_grad():
-            discriminator_logit = self.forward(torch.cat([state, next_state], dim=-1))
+            discriminator_logit = self.forward(state=state, next_state=next_state, condition=condition)
             style_reward = self.reward_scale * torch.clamp(
                 1 - 0.25 * torch.square(discriminator_logit - 1), min=0
             )
@@ -161,12 +187,14 @@ class Discriminator(nn.Module):
         expert_d,
         sample_amp_expert,
         sample_amp_policy,
+        expert_condition: torch.Tensor | None = None,
         lambda_: float = 10,
     ):
 
         sample_amp_expert = tuple(self.amp_normalizer(s) for s in sample_amp_expert)
         grad_pen_loss = self.compute_grad_pen(
             expert_states=sample_amp_expert,
+            condition=expert_condition,
             lambda_=lambda_,
         )
         expert_loss = self.expert_loss(expert_d)
@@ -177,6 +205,7 @@ class Discriminator(nn.Module):
     def compute_grad_pen(
         self,
         expert_states: tuple[torch.Tensor, torch.Tensor],
+        condition: torch.Tensor | None = None,
         lambda_: float = 10,
     ) -> torch.Tensor:
         """Compute TienKung-Lab style gradient penalty on expert samples.
@@ -188,7 +217,15 @@ class Discriminator(nn.Module):
         Returns:
             Tensor: Gradient penalty value.
         """
-        expert = torch.cat(expert_states, -1)
+        if self.condition_dim > 0:
+            if condition is None:
+                raise ValueError("Conditional discriminator requires condition for gradient penalty.")
+            condition = condition.to(expert_states[0].device, dtype=expert_states[0].dtype).reshape(
+                expert_states[0].shape[0], self.condition_dim
+            )
+            expert = torch.cat([expert_states[0], expert_states[1], condition], -1)
+        else:
+            expert = torch.cat(expert_states, -1)
         data = expert.detach().requires_grad_(True)
         h = self.trunk(data)
         if self.use_minibatch_std:

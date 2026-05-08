@@ -1,52 +1,30 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from roboot16_amp_project.paths import AMP_EXPERT_DIR
 
 
-AMP_TASK_REWARD_LERP = 0.5 #0.7
+AMP_TASK_REWARD_LERP = 0.6 #0.7
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
+AMP_SPEED_CONDITIONING_TAU = 0.20
+# Treat only exact zero-speed commands as stand sampling, with a tiny tolerance
+# to avoid floating-point edge cases in the command tensor.
+AMP_STAND_ONLY_SPEED_THRESHOLD = 1.0e-6
 
-AMP_HIGH_SPEED_DATASETS = [
-    "run_high_speed/run1_5",
-    "run_high_speed/run1_5_mirrored",
-    "run_high_speed/run1_7",
-    "run_high_speed/run1_7_mirrored",
-    "run_high_speed/run2_7",
-    "run_high_speed/run2_7_mirrored",
-    "run_high_speed/run2_10",
-    "run_high_speed/run2_10_mirrored",
-]
 
-AMP_LOW_SPEED_DATASETS = [
-    "run_low_speed/run1_1",
-    "run_low_speed/run1_1_mirrored",
-    "run_low_speed/run1_3",
-    "run_low_speed/run1_3_mirrored",
-    "run_low_speed/run1_4",
-    "run_low_speed/run1_4_mirrored",
-    "run_low_speed/run1_6",
-    "run_low_speed/run1_6_mirrored",
-    "run_low_speed/run2_1",
-    "run_low_speed/run2_1_mirrored",
-    "run_low_speed/run2_2",
-    "run_low_speed/run2_2_mirrored",
-    "run_low_speed/run2_3",
-    "run_low_speed/run2_3_mirrored",
-    "run_low_speed/run2_4",
-    "run_low_speed/run2_4_mirrored",
-    "run_low_speed/run2_5",
-    "run_low_speed/run2_5_mirrored",
-    "run_low_speed/run2_6",
-    "run_low_speed/run2_6_mirrored",
-    "run_low_speed/run2_8",
-    "run_low_speed/run2_8_mirrored",
-    "run_low_speed/run2_9",
-    "run_low_speed/run2_9_mirrored",
-    "run_low_speed/stand",
-    "run_low_speed/stand_mirrored",
-]
+def _collect_amp_txt_datasets(root: Path) -> list[str]:
+    datasets: list[str] = []
+    for group in ["stand", "walk", "run", "sprint"]:
+        group_dir = root / group
+        datasets.extend(
+            f"{group}/{path.stem}"
+            for path in sorted(group_dir.glob("*.txt"))
+        )
+    return datasets
 
-AMP_DATASETS = AMP_HIGH_SPEED_DATASETS + AMP_LOW_SPEED_DATASETS
+
+AMP_DATASETS = _collect_amp_txt_datasets(AMP_DATASET_ROOT)
 AMP_DATASET_WEIGHT = 1.0 / len(AMP_DATASETS)
 
 
@@ -100,5 +78,7 @@ Roboot16FlatAMPRunnerCfg = {
         "amp_data_path": str(AMP_DATASET_ROOT),
         "datasets": {name: AMP_DATASET_WEIGHT for name in AMP_DATASETS},
         "slow_down_factor": 1,
+        "speed_conditioning_tau": AMP_SPEED_CONDITIONING_TAU,
+        "stand_only_speed_threshold": AMP_STAND_ONLY_SPEED_THRESHOLD,
     },
 }

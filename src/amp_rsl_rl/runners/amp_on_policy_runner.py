@@ -231,11 +231,14 @@ class AMPOnPolicyRunner:
             simulation_dt=self.env.cfg.sim.dt * self.env.cfg.decimation,
             slow_down_factor=self.dataset_cfg["slow_down_factor"],
             expected_joint_names=amp_joint_names,
+            speed_conditioning_tau=self.dataset_cfg.get("speed_conditioning_tau", 0.35),
+            stand_only_speed_threshold=self.dataset_cfg.get("stand_only_speed_threshold", 0.1),
         )
 
         self.discriminator = Discriminator(
-            input_dim=num_amp_obs
-            * 2,  # the discriminator takes in the concatenation of the current and next observation
+            input_dim=num_amp_obs * 2 + 1,
+            amp_obs_dim=num_amp_obs,
+            condition_dim=1,
             hidden_layer_sizes=self.discriminator_cfg["hidden_dims"],
             reward_scale=self.discriminator_cfg["reward_scale"],
             device=self.device,
@@ -441,7 +444,8 @@ class AMPOnPolicyRunner:
             with torch.inference_mode():
                 for _ in range(self.num_steps_per_env):
                     actions = self.alg.act(obs)
-                    self.alg.act_amp(amp_obs)
+                    command_speed = self.env.command_manager.get_command("base_velocity")[:, 0].to(self.device)
+                    self.alg.act_amp(amp_obs, command_speed=command_speed)
                     obs, rewards, dones, extras = self.env.step(
                         actions.to(self.env.device)
                     )
@@ -465,8 +469,13 @@ class AMPOnPolicyRunner:
                         next_amp_obs_with_term,
                         task_rewards,
                         self.amp_task_reward_lerp,
+                        condition=command_speed,
                     )
-                    style_rewards = self.discriminator.predict_reward(amp_obs, next_amp_obs_with_term)
+                    style_rewards = self.discriminator.predict_reward(
+                        amp_obs,
+                        next_amp_obs_with_term,
+                        condition=command_speed,
+                    )
 
                     mean_task_reward_log += task_rewards.mean().item()
                     mean_style_reward_log += style_rewards.mean().item()

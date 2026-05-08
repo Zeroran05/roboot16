@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Union, Tuple, Generator, Dict
 from dataclasses import dataclass
 import sys
+import re
 
 import torch
 import numpy as np
@@ -14,6 +15,23 @@ from scipy.spatial.transform import Rotation, Slerp
 from scipy.interpolate import interp1d
 
 from .motion_txt import load_motion_txt, resolve_motion_dataset_path
+
+
+_SPEED_TAG_RE = re.compile(r"^(stand|walk|run|sprint)\d+_(\d+p\d+)(?:_mirror(?:ed)?)?$")
+
+
+def _infer_dataset_speed(dataset_name: str) -> tuple[str, float]:
+    """Infer (group, speed) from a categorized dataset name like ``walk3_1p7_mirror``."""
+    stem = Path(dataset_name).stem
+    match = _SPEED_TAG_RE.match(stem)
+    if match is None:
+        raise ValueError(
+            f"Unable to infer speed metadata from dataset name '{dataset_name}'. "
+            "Expected names like 'walk3_1p7' or 'sprint2_3p2_mirror'."
+        )
+    group = match.group(1)
+    speed = float(match.group(2).replace("p", "."))
+    return group, speed
 
 
 def _load_pickled_numpy_dict(dataset_path: Path) -> dict:
@@ -270,8 +288,12 @@ class AMPLoader:
         simulation_dt: float,
         slow_down_factor: int,
         expected_joint_names: Union[List[str], None] = None,
+        speed_conditioning_tau: float = 0.35,
+        stand_only_speed_threshold: float = 0.1,
     ) -> None:
         self.device = device
+        self.speed_conditioning_tau = float(speed_conditioning_tau)
+        self.stand_only_speed_threshold = float(stand_only_speed_threshold)
         if isinstance(dataset_path_root, str):
             dataset_path_root = Path(dataset_path_root)
 
@@ -306,8 +328,11 @@ class AMPLoader:
 
         # Load and process each dataset into MotionData
         self.motion_data: List[MotionData] = []
+        self.dataset_groups: List[str] = []
+        self.dataset_speeds: List[float] = []
         for dataset_name in dataset_names:
             dataset_path = resolve_motion_dataset_path(dataset_path_root, dataset_name)
+            dataset_group, dataset_speed = _infer_dataset_speed(dataset_name)
             md = self.load_data(
                 dataset_path,
                 simulation_dt,
@@ -315,6 +340,8 @@ class AMPLoader:
                 expected_joint_names,
             )
             self.motion_data.append(md)
+            self.dataset_groups.append(dataset_group)
+            self.dataset_speeds.append(dataset_speed)
 
         # Normalize dataset-level sampling weights
         weights = torch.tensor(dataset_weights, dtype=torch.float32, device=self.device)
@@ -322,8 +349,13 @@ class AMPLoader:
 
         # Precompute flat buffers for fast sampling
         obs_list, next_obs_list, reset_states = [], [], []
+        self.clip_lengths: List[int] = []
+        self.clip_start_indices: List[int] = []
+        frame_cursor = 0
         for data, w in zip(self.motion_data, self.dataset_weights):
             T = len(data)
+            self.clip_lengths.append(T)
+            self.clip_start_indices.append(frame_cursor)
             idx = torch.arange(T, device=self.device)
             obs = data.get_amp_dataset_obs(idx)
             next_idx = torch.clamp(idx + 1, max=T - 1)
@@ -334,6 +366,7 @@ class AMPLoader:
 
             quat, jp, jv, blv, bav = data.get_state_for_reset(idx)
             reset_states.append(torch.cat([quat, jp, jv, blv, bav], dim=1))
+            frame_cursor += T
 
         self.all_obs = torch.cat(obs_list, dim=0)
         self.all_next_obs = torch.cat(next_obs_list, dim=0)
@@ -348,6 +381,12 @@ class AMPLoader:
             ]
         )
         self.per_frame_weights = per_frame / per_frame.sum()
+        self.clip_speeds = torch.tensor(self.dataset_speeds, dtype=torch.float32, device=self.device)
+        self.clip_is_stand = torch.tensor(
+            [group == "stand" for group in self.dataset_groups],
+            dtype=torch.bool,
+            device=self.device,
+        )
 
     def _resample_data_Rn(
         self,
@@ -684,6 +723,40 @@ class AMPLoader:
                 self.per_frame_weights, mini_batch_size, replacement=True
             )
             yield self.all_obs[idx], self.all_next_obs[idx]
+
+    def sample_conditioned(
+        self,
+        command_speeds: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Sample expert transitions conditioned on commanded forward speed.
+
+        Each command speed first samples a clip using a soft weighting over clip-level
+        speeds: ``clip_weight * exp(-|speed_clip - speed_cmd| / tau)``. A frame is then
+        drawn uniformly from that clip. This avoids biasing the expert sampler toward
+        longer clips while still allowing smooth mixing near speed boundaries.
+        """
+        if command_speeds.ndim == 2 and command_speeds.shape[1] == 1:
+            command_speeds = command_speeds[:, 0]
+        command_speeds = command_speeds.to(self.device, dtype=torch.float32).reshape(-1)
+
+        tau = max(self.speed_conditioning_tau, 1.0e-6)
+        log_base = torch.log(self.dataset_weights + 1.0e-12).unsqueeze(0)
+        speed_distance = torch.abs(command_speeds.unsqueeze(1) - self.clip_speeds.unsqueeze(0))
+        logits = log_base - speed_distance / tau
+        if torch.any(torch.abs(command_speeds) <= self.stand_only_speed_threshold):
+            stand_mask = self.clip_is_stand.unsqueeze(0).expand(command_speeds.shape[0], -1)
+            near_zero_mask = (torch.abs(command_speeds) <= self.stand_only_speed_threshold).unsqueeze(1)
+            logits = torch.where(near_zero_mask & (~stand_mask), torch.full_like(logits, -1.0e9), logits)
+        clip_weights = torch.softmax(logits, dim=1)
+        clip_idx = torch.multinomial(clip_weights, num_samples=1, replacement=True).squeeze(1)
+
+        frame_idx = torch.empty_like(clip_idx)
+        for i, clip_id in enumerate(clip_idx.tolist()):
+            start = self.clip_start_indices[clip_id]
+            length = self.clip_lengths[clip_id]
+            local_idx = torch.randint(0, length, (1,), device=self.device).item()
+            frame_idx[i] = start + local_idx
+        return self.all_obs[frame_idx], self.all_next_obs[frame_idx]
 
     def get_state_for_reset(self, number_of_samples: int) -> Tuple[torch.Tensor, ...]:
         """

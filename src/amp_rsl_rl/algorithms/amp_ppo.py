@@ -104,7 +104,7 @@ class AMP_PPO:
         self.amp_transition: RolloutStorage.Transition = RolloutStorage.Transition()
         # Determine observation dimension used in the replay buffer.
         # The discriminator expects concatenated observations, so the replay buffer uses half the dimension.
-        obs_dim: int = self.discriminator.input_dim // 2
+        obs_dim: int = self.discriminator.amp_obs_dim
         self.amp_storage: ReplayBuffer = ReplayBuffer(
             obs_dim=obs_dim, buffer_size=amp_replay_buffer_size, device=device
         )
@@ -213,7 +213,7 @@ class AMP_PPO:
         self.transition.observations = obs
         return self.transition.actions
 
-    def act_amp(self, amp_obs: torch.Tensor) -> None:
+    def act_amp(self, amp_obs: torch.Tensor, command_speed: torch.Tensor | None = None) -> None:
         """Store the latest AMP policy observation for later replay insertion.
 
         Parameters
@@ -222,6 +222,7 @@ class AMP_PPO:
             Concatenated AMP observation representing the current policy state.
         """
         self.amp_transition.observations = amp_obs
+        self.amp_transition.command_speed = command_speed
 
     def process_env_step(
         self,
@@ -267,7 +268,11 @@ class AMP_PPO:
         amp_obs : torch.Tensor
             Next AMP observation paired with the previously stored policy state.
         """
-        self.amp_storage.insert(self.amp_transition.observations, amp_obs)
+        self.amp_storage.insert(
+            self.amp_transition.observations,
+            amp_obs,
+            getattr(self.amp_transition, "command_speed", None),
+        )
         self.amp_transition.clear()
 
     def compute_returns(self, obs: TensorDict) -> None:
@@ -330,18 +335,8 @@ class AMP_PPO:
             allow_replacement=True,
         )
 
-        # Generator for expert AMP data.
-        amp_expert_generator = self.amp_data.feed_forward_generator(
-            self.num_learning_epochs * self.num_mini_batches,
-            self.storage.num_envs
-            * self.storage.num_transitions_per_env
-            // self.num_mini_batches,
-        )
-
         # Loop over mini-batches from the environment transitions and AMP data.
-        for sample, sample_amp_policy, sample_amp_expert in zip(
-            generator, amp_policy_generator, amp_expert_generator
-        ):
+        for sample, sample_amp_policy in zip(generator, amp_policy_generator):
             # Unpack the mini-batch sample from the environment.
             (
                 obs_batch,
@@ -357,6 +352,8 @@ class AMP_PPO:
             ) = sample
 
             hidden_state_actor, hidden_state_critic = (None, None)
+            policy_state, policy_next_state, policy_command_speed = sample_amp_policy
+            expert_state, expert_next_state = self.amp_data.sample_conditioned(policy_command_speed)
             if hidden_states_batch is not None:
                 hidden_state_actor, hidden_state_critic = hidden_states_batch
 
@@ -438,15 +435,13 @@ class AMP_PPO:
                 - self.entropy_coef * entropy_batch.mean()
             )
 
-            # Process AMP loss by unpacking policy and expert AMP samples.
-            policy_state, policy_next_state = sample_amp_policy
-            expert_state, expert_next_state = sample_amp_expert
-
             # Ensure everything is on the right device (AMPLoader may yield CPU tensors)
             policy_state = policy_state.to(self.device)
             policy_next_state = policy_next_state.to(self.device)
+            policy_command_speed = policy_command_speed.to(self.device)
             expert_state = expert_state.to(self.device)
             expert_next_state = expert_next_state.to(self.device)
+            expert_command_speed = policy_command_speed
 
             # Keep raw tensors for normalizer updates
             policy_state_raw = policy_state.detach().clone()
@@ -454,15 +449,14 @@ class AMP_PPO:
             expert_state_raw = expert_state.detach().clone()
             expert_next_state_raw = expert_next_state.detach().clone()
 
-            # Concatenate policy and expert AMP observations for the discriminator input.
             B_pol = policy_state.size(0)
-            discriminator_input = torch.cat(
-                (
-                    torch.cat([policy_state, policy_next_state], dim=-1),
-                    torch.cat([expert_state, expert_next_state], dim=-1),
-                ),
-                dim=0,
+            policy_input = self.discriminator._build_input(
+                policy_state, policy_next_state, policy_command_speed
             )
+            expert_input = self.discriminator._build_input(
+                expert_state, expert_next_state, expert_command_speed
+            )
+            discriminator_input = torch.cat((policy_input, expert_input), dim=0)
             discriminator_output = self.discriminator(discriminator_input)
             policy_d, expert_d = (
                 discriminator_output[:B_pol],
@@ -475,6 +469,7 @@ class AMP_PPO:
                 expert_d=expert_d,
                 sample_amp_expert=(expert_state, expert_next_state),
                 sample_amp_policy=(policy_state, policy_next_state),
+                expert_condition=expert_command_speed,
                 lambda_=10,
             )
 

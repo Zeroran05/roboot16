@@ -24,6 +24,7 @@ env = None
 motion_root_pos = None
 motion_root_rot = None
 motion_dof_pos = None
+motion_root_vel = None
 tracked_links = []
 augmented_output_path = ""
 
@@ -65,6 +66,45 @@ def current_time_seconds():
     return frame_idx / motion_fps
 
 
+def get_frame_root_velocity(displayed_frame_idx):
+    if num_frames <= 0:
+        return np.zeros(3, dtype=np.float32)
+    clamped_idx = clamp_frame_index(displayed_frame_idx, num_frames)
+    if motion_root_vel is not None:
+        return np.asarray(motion_root_vel[clamped_idx], dtype=np.float32)
+
+    if motion_root_pos is None or motion_fps <= 0:
+        return np.zeros(3, dtype=np.float32)
+
+    if num_frames == 1:
+        return np.zeros(3, dtype=np.float32)
+
+    next_idx = min(clamped_idx + 1, num_frames - 1)
+    prev_idx = max(clamped_idx - 1, 0)
+    if next_idx == clamped_idx:
+        delta = np.asarray(motion_root_pos[clamped_idx], dtype=np.float32) - np.asarray(motion_root_pos[prev_idx], dtype=np.float32)
+    else:
+        delta = np.asarray(motion_root_pos[next_idx], dtype=np.float32) - np.asarray(motion_root_pos[clamped_idx], dtype=np.float32)
+    return delta * float(motion_fps)
+
+
+def format_speed_status(displayed_frame_idx):
+    vel = get_frame_root_velocity(displayed_frame_idx)
+    speed_xy = float(np.linalg.norm(vel[:2]))
+    speed_xyz = float(np.linalg.norm(vel))
+    return (
+        f"vx={vel[0]:+.3f} vy={vel[1]:+.3f} vz={vel[2]:+.3f} m/s | "
+        f"speed_xy={speed_xy:.3f} speed_xyz={speed_xyz:.3f} m/s"
+    )
+
+
+def compute_mean_speed_xy():
+    if num_frames <= 0:
+        return 0.0
+    speeds_xy = [float(np.linalg.norm(get_frame_root_velocity(idx)[:2])) for idx in range(num_frames)]
+    return float(np.mean(speeds_xy)) if speeds_xy else 0.0
+
+
 def print_current_status(prefix="Current"):
     if num_frames <= 0:
         return
@@ -73,7 +113,8 @@ def print_current_status(prefix="Current"):
     print(
         f"{prefix}: frame {frame_idx + 1}/{num_frames} | "
         f"time {format_time(current_seconds)} / {format_time(total_seconds)} "
-        f"({current_seconds:.3f}s / {total_seconds:.3f}s)"
+        f"({current_seconds:.3f}s / {total_seconds:.3f}s) | "
+        f"{format_speed_status(frame_idx)}"
     )
 
 
@@ -276,7 +317,7 @@ def draw_capsule(viewer, start, end, radius, rgba, label=""):
         from_=start,
         to=end,
     )
-    geom.label = label
+    geom.label = _safe_geom_label(label)
     viewer.user_scn.ngeom += 1
 
 
@@ -290,8 +331,17 @@ def draw_sphere(viewer, pos, radius, rgba, label=""):
         mat=np.eye(3).flatten(),
         rgba=np.array(rgba),
     )
-    geom.label = label
+    geom.label = _safe_geom_label(label)
     viewer.user_scn.ngeom += 1
+
+
+def _safe_geom_label(label, max_len=99):
+    if not label:
+        return ""
+    text = str(label)
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 3] + "..."
 
 
 def draw_timeline(env, displayed_frame_idx, total_frames, fps):
@@ -315,7 +365,8 @@ def draw_timeline(env, displayed_frame_idx, total_frames, fps):
 
     status_label = (
         f"frame {displayed_frame_idx + 1}/{total_frames} | "
-        f"{format_time(current_seconds)} / {format_time(total_seconds)}"
+        f"{format_time(current_seconds)} / {format_time(total_seconds)} | "
+        f"{format_speed_status(displayed_frame_idx)}"
     )
     draw_sphere(env.viewer, marker, 0.03, [1.0, 0.9, 0.2, 0.98], status_label)
 
@@ -384,6 +435,7 @@ if __name__ == "__main__":
         motion_local_body_pos,
         motion_link_body_list,
     ) = load_robot_motion(robot_motion_path)
+    motion_root_vel = motion_data.get("root_vel")
 
     motion_fps = float(motion_fps_loaded)
     num_frames = len(motion_root_pos)
@@ -404,6 +456,7 @@ if __name__ == "__main__":
         f"Loaded motion: {robot_motion_path} | "
         f"fps={motion_fps:.3f} | frames={num_frames} | duration={format_time(total_seconds)}"
     )
+    print(f"Mean horizontal speed: {compute_mean_speed_xy():.3f} m/s")
     if tracked_links:
         print(f"Tracked links: {tracked_links}")
     else:
@@ -437,5 +490,7 @@ if __name__ == "__main__":
 
         if not paused:
             frame_idx = clamp_frame_index(displayed_frame_idx + 1, num_frames)
+            if frame_idx == 0 and num_frames > 0:
+                print(f"Segment loop finished | mean_speed_xy={compute_mean_speed_xy():.3f} m/s")
 
     env.close()

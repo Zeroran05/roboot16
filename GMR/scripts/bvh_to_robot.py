@@ -248,6 +248,13 @@ if __name__ == "__main__":
         type=float,
         help="Target FPS for retargeting. If not specified, will use source FPS.",
     )
+
+    parser.add_argument(
+        "--offset_to_ground",
+        action="store_true",
+        default=False,
+        help="Offset the human targets so the lowest foot is aligned to the ground before IK retargeting.",
+    )
     
     # 校验阈值与严格模式
     parser.add_argument("--vel_check_strict", action="store_true", default=False)
@@ -366,9 +373,16 @@ if __name__ == "__main__":
 
             # retarget with frame_dt_target
             try:
-                ret = retargeter.retarget(smplx_data, frame_dt_target=target_dt)
+                ret = retargeter.retarget(
+                    smplx_data,
+                    offset_to_ground=args.offset_to_ground,
+                    frame_dt_target=target_dt,
+                )
             except TypeError:
-                ret = retargeter.retarget(smplx_data)
+                ret = retargeter.retarget(
+                    smplx_data,
+                    offset_to_ground=args.offset_to_ground,
+                )
 
             # 解包：兼容新旧两种 retarget() 返回格式
             if isinstance(ret, tuple):

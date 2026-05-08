@@ -444,8 +444,6 @@ class AMP_PPO:
             policy_command_speed = policy_command_speed.to(self.device)
             expert_state = expert_state.to(self.device)
             expert_next_state = expert_next_state.to(self.device)
-            expert_command_speed = policy_command_speed
-
             if expert_clip_idx.numel() > 0 and policy_command_speed.numel() > 0:
                 debug_idx = int(expert_clip_idx[0].item())
                 self.last_amp_debug_sample = {
@@ -463,10 +461,10 @@ class AMP_PPO:
 
             B_pol = policy_state.size(0)
             policy_input = self.discriminator._build_input(
-                policy_state, policy_next_state, policy_command_speed
+                policy_state, policy_next_state
             )
             expert_input = self.discriminator._build_input(
-                expert_state, expert_next_state, expert_command_speed
+                expert_state, expert_next_state
             )
             discriminator_input = torch.cat((policy_input, expert_input), dim=0)
             discriminator_output = self.discriminator(discriminator_input)
@@ -481,7 +479,6 @@ class AMP_PPO:
                 expert_d=expert_d,
                 sample_amp_expert=(expert_state, expert_next_state),
                 sample_amp_policy=(policy_state, policy_next_state),
-                expert_condition=expert_command_speed,
                 lambda_=10,
             )
 

@@ -392,6 +392,7 @@ class AMPLoader:
         self.clip_start_indices_tensor = torch.tensor(
             self.clip_start_indices, dtype=torch.long, device=self.device
         )
+        self.last_conditioning_stats: dict[str, float] | None = None
 
     def _resample_data_Rn(
         self,
@@ -756,6 +757,19 @@ class AMPLoader:
         logits = torch.where(non_zero_mask & stand_mask, torch.full_like(logits, -1.0e9), logits)
         clip_weights = torch.softmax(logits, dim=1)
         clip_idx = torch.multinomial(clip_weights, num_samples=1, replacement=True).squeeze(1)
+        selected_is_stand = self.clip_is_stand[clip_idx]
+        zero_cmd = torch.abs(command_speeds) <= self.stand_only_speed_threshold
+        non_zero_cmd = ~zero_cmd
+        zero_count = int(zero_cmd.sum().item())
+        non_zero_count = int(non_zero_cmd.sum().item())
+        zero_stand_hits = int((zero_cmd & selected_is_stand).sum().item())
+        non_zero_stand_hits = int((non_zero_cmd & selected_is_stand).sum().item())
+        self.last_conditioning_stats = {
+            "zero_cmd_count": float(zero_count),
+            "non_zero_cmd_count": float(non_zero_count),
+            "zero_cmd_stand_ratio": float(zero_stand_hits / max(zero_count, 1)),
+            "non_zero_cmd_stand_ratio": float(non_zero_stand_hits / max(non_zero_count, 1)),
+        }
 
         clip_starts = self.clip_start_indices_tensor[clip_idx]
         clip_lengths = self.clip_lengths_tensor[clip_idx]

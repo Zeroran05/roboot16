@@ -691,6 +691,7 @@ class AMPOnPolicyRunner:
                 locs["it"],
             )
             amp_debug_sample = getattr(self.alg, "last_amp_debug_sample", None)
+            amp_conditioning_stats = getattr(self.alg.amp_data, "last_conditioning_stats", None)
             if amp_debug_sample is not None:
                 self.writer.add_scalar(
                     "Train/debug_env0_command_speed",
@@ -700,6 +701,17 @@ class AMPOnPolicyRunner:
                 self.writer.add_scalar(
                     "Train/debug_env0_expert_clip_speed",
                     amp_debug_sample["expert_clip_speed"],
+                    locs["it"],
+                )
+            if amp_conditioning_stats is not None:
+                self.writer.add_scalar(
+                    "Train/amp_zero_cmd_stand_ratio",
+                    amp_conditioning_stats["zero_cmd_stand_ratio"],
+                    locs["it"],
+                )
+                self.writer.add_scalar(
+                    "Train/amp_non_zero_cmd_stand_ratio",
+                    amp_conditioning_stats["non_zero_cmd_stand_ratio"],
                     locs["it"],
                 )
             if track_lin_vel_ep_reward is not None:
@@ -731,6 +743,7 @@ class AMPOnPolicyRunner:
 
         str = f" \033[1m Learning iteration {locs['it']}/{locs['tot_iter']} \033[0m "
         amp_debug_sample = getattr(self.alg, "last_amp_debug_sample", None)
+        amp_conditioning_stats = getattr(self.alg.amp_data, "last_conditioning_stats", None)
 
         if len(locs["rewbuffer"]) > 0:
             log_string = (
@@ -762,6 +775,11 @@ class AMPOnPolicyRunner:
                     f"""{'AMP env0 clip:':>{pad}} {amp_debug_sample['expert_clip_name']}\n"""
                     f"""{'AMP env0 clip speed:':>{pad}} {amp_debug_sample['expert_clip_speed']:.4f}\n"""
                 )
+            if amp_conditioning_stats is not None:
+                log_string += (
+                    f"""{'AMP zero-cmd->stand:':>{pad}} {amp_conditioning_stats['zero_cmd_stand_ratio']:.4f}\n"""
+                    f"""{'AMP nonzero->stand:':>{pad}} {amp_conditioning_stats['non_zero_cmd_stand_ratio']:.4f}\n"""
+                )
             #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
             #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")
         else:
@@ -787,6 +805,11 @@ class AMPOnPolicyRunner:
                     f"""{'AMP env0 cmd vx:':>{pad}} {amp_debug_sample['policy_command_speed']:.4f}\n"""
                     f"""{'AMP env0 clip:':>{pad}} {amp_debug_sample['expert_clip_name']}\n"""
                     f"""{'AMP env0 clip speed:':>{pad}} {amp_debug_sample['expert_clip_speed']:.4f}\n"""
+                )
+            if amp_conditioning_stats is not None:
+                log_string += (
+                    f"""{'AMP zero-cmd->stand:':>{pad}} {amp_conditioning_stats['zero_cmd_stand_ratio']:.4f}\n"""
+                    f"""{'AMP nonzero->stand:':>{pad}} {amp_conditioning_stats['non_zero_cmd_stand_ratio']:.4f}\n"""
                 )
             #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
             #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")

@@ -203,14 +203,14 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "attr_path": "ranges.lin_vel_x",
             "schedule_name": "lin_vel_x",
             "schedule": [
-                (0, (0.0, 1.0)),
-                (16_800, (0.0, 1.5)),
-                (28_800, (0.0, 2.0)),
-                (40_800, (0.0, 2.5)),
-                (52_800, (0.0, 3.0)),
-                (64_800, (0.0, 3.5)),
-                (76_800, (0.0, 4.0)),
-                (88_800, (0.0, 4.5))
+                (0, (0.1, 1.0)),
+                (16_800, (0.2, 1.5)),
+                (28_800, (0.2, 2.0)),
+                (40_800, (0.2, 2.5)),
+                (52_800, (0.2, 3.0)),
+                (64_800, (0.2, 3.5)),
+                (76_800, (0.2, 4.0)),
+                (88_800, (0.2, 4.5))
             ],
         },
     )
@@ -224,20 +224,20 @@ class Roboot16AmpHighSpeedCurriculumCfg:
     #         ],
     #     },
     # )
-    standing_env_ratio = CurrTerm(
-        func=_apply_command_term_schedule,
-        params={
-            "attr_path": "rel_standing_envs",
-            "schedule_name": "rel_standing_envs",
-            "schedule": [
-                (0, 0.2),
-                (16_800, 0.18),
-                (28_800, 0.15),
-                (40_800, 0.12),
-                (52_800, 0.1)
-            ],
-        },
-    )
+    # standing_env_ratio = CurrTerm(
+    #     func=_apply_command_term_schedule,
+    #     params={
+    #         "attr_path": "rel_standing_envs",
+    #         "schedule_name": "rel_standing_envs",
+    #         "schedule": [
+    #             (0, 0.2),
+    #             (16_800, 0.18),
+    #             (28_800, 0.15),
+    #             (40_800, 0.12),
+    #             (52_800, 0.1)
+    #         ],
+    #     },
+    # )
     track_lin_vel_xy_weight = CurrTerm(
         func=env_mdp.modify_term_cfg,
         params={
@@ -367,7 +367,7 @@ class Roboot16AmpHighSpeedEnvCfg(Roboot16AmpFlatEnvCfg):
 
         # These are the task-local initial command settings. The curriculum above
         # will progressively overwrite the tracked fields during training.
-        self.commands.base_velocity.rel_standing_envs = 0.2
+        self.commands.base_velocity.rel_standing_envs = 0.0
         self.commands.base_velocity.rel_heading_envs = 0.0
         self.commands.base_velocity.heading_command = False
         self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)

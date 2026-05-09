@@ -5,7 +5,7 @@ from pathlib import Path
 from roboot16_amp_project.paths import AMP_EXPERT_DIR
 
 
-AMP_TASK_REWARD_LERP = 0.6 #0.7
+AMP_TASK_REWARD_LERP = 0.7 #0.7
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
 AMP_SPEED_CONDITIONING_TAU = 0.20
 # Treat only exact zero-speed commands as stand sampling, with a tiny tolerance

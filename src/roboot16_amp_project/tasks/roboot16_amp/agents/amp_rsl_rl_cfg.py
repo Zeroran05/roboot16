@@ -70,7 +70,7 @@ Roboot16FlatAMPRunnerCfg = {
     },
     "discriminator": {
         "hidden_dims": [1024, 512, 256],
-        "reward_scale": 1,# 0.3，奖励太小，提高奖励scale
+        "reward_scale": 0.4,# 0.3，奖励太小，提高奖励scale
         "loss_type": "LSGAN",
         "empirical_normalization": True,
     },

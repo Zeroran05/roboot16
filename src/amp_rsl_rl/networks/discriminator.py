@@ -44,6 +44,7 @@ class Discriminator(nn.Module):
         self.input_dim = input_dim
         self.amp_obs_dim = amp_obs_dim
         self.condition_dim = condition_dim
+        self.condition_scale = 4.0
         self.reward_scale = reward_scale
         layers = []
         curr_in_dim = input_dim
@@ -85,6 +86,7 @@ class Discriminator(nn.Module):
             if condition is None:
                 raise ValueError("Conditional discriminator requires a condition tensor.")
             condition = condition.to(state.device, dtype=state.dtype).reshape(state.shape[0], self.condition_dim)
+            condition = condition / self.condition_scale
             return torch.cat([state, next_state, condition], dim=-1)
         return torch.cat([state, next_state], dim=-1)
 
@@ -187,6 +189,7 @@ class Discriminator(nn.Module):
         expert_d,
         sample_amp_expert,
         sample_amp_policy,
+        policy_condition: torch.Tensor | None = None,
         expert_condition: torch.Tensor | None = None,
         lambda_: float = 10,
     ):

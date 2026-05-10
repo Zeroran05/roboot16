@@ -5,18 +5,21 @@ from pathlib import Path
 from roboot16_amp_project.paths import AMP_EXPERT_DIR
 
 
-AMP_TASK_REWARD_LERP = 0.7 #0.7
+AMP_TASK_REWARD_LERP = 0.85 #0.7
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
-AMP_SPEED_CONDITIONING_TAU = 0.20
+AMP_SPEED_CONDITIONING_TAU = 0.25
+AMP_DATASET_GROUPS = ["stand", "slow", "walk", "jog", "run", "sprint"]
 # Treat only exact zero-speed commands as stand sampling, with a tiny tolerance
 # to avoid floating-point edge cases in the command tensor.
-AMP_STAND_ONLY_SPEED_THRESHOLD = 1.0e-6
+AMP_STAND_ONLY_SPEED_THRESHOLD = 0.3
 
 
 def _collect_amp_txt_datasets(root: Path) -> list[str]:
     datasets: list[str] = []
-    for group in ["stand", "walk", "run", "sprint"]:
+    for group in AMP_DATASET_GROUPS:
         group_dir = root / group
+        if not group_dir.is_dir():
+            continue
         datasets.extend(
             f"{group}/{path.stem}"
             for path in sorted(group_dir.glob("*.txt"))
@@ -25,6 +28,8 @@ def _collect_amp_txt_datasets(root: Path) -> list[str]:
 
 
 AMP_DATASETS = _collect_amp_txt_datasets(AMP_DATASET_ROOT)
+if not AMP_DATASETS:
+    raise RuntimeError(f"No AMP expert txt datasets found under {AMP_DATASET_ROOT}")
 AMP_DATASET_WEIGHT = 1.0 / len(AMP_DATASETS)
 
 
@@ -73,6 +78,7 @@ Roboot16FlatAMPRunnerCfg = {
         "reward_scale": 0.4,# 0.3，奖励太小，提高奖励scale
         "loss_type": "LSGAN",
         "empirical_normalization": True,
+        "condition_dim": 1,
     },
     "dataset": {
         "amp_data_path": str(AMP_DATASET_ROOT),

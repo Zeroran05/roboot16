@@ -17,19 +17,22 @@ from scipy.interpolate import interp1d
 from .motion_txt import load_motion_txt, resolve_motion_dataset_path
 
 
-_SPEED_TAG_RE = re.compile(r"^(stand|walk|run|sprint)\d+_(\d+p\d+)(?:_mirror(?:ed)?)?$")
+_SPEED_TAG_RE = re.compile(
+    r"^(stand|slow|walk|jog|run|sprint)(?:\d+)?_(\d+p\d+)(?:_mirror(?:ed)?)?$",
+    re.IGNORECASE,
+)
 
 
 def _infer_dataset_speed(dataset_name: str) -> tuple[str, float]:
-    """Infer (group, speed) from a categorized dataset name like ``walk3_1p7_mirror``."""
+    """Infer (group, speed) from names like ``walk3_1p7`` or ``walk_0p9_mirrored``."""
     stem = Path(dataset_name).stem
     match = _SPEED_TAG_RE.match(stem)
     if match is None:
         raise ValueError(
             f"Unable to infer speed metadata from dataset name '{dataset_name}'. "
-            "Expected names like 'walk3_1p7' or 'sprint2_3p2_mirror'."
+            "Expected names like 'walk3_1p7', 'walk_0p9', or 'jog_1p7_mirrored'."
         )
-    group = match.group(1)
+    group = match.group(1).lower()
     speed = float(match.group(2).replace("p", "."))
     return group, speed
 

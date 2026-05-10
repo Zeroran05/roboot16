@@ -100,7 +100,16 @@ mjpython scripts/bvh_to_robot.py \
 
 mjpython scripts/vis_robot_motion.py \
   --robot roboot16 \
-  --robot_motion_path retargeting_data/roboot16/run1_subject2.pkl
+  --robot_motion_path retargeting_data/roboot16/run2_subject1.pkl
+
+mjpython scripts/vis_robot_motion.py \
+  --robot roboot16 \
+  --robot_motion_path retargeting_data/roboot16/pkl_classified/walk/walk6_1p9.pkl
+
+mjpython scripts/vis_robot_motion.py \
+  --robot roboot16 \
+  --robot_motion_path retargeting_data/roboot16/pkl_segments/walk1_subject2/walk_1p3.pkl
+
 
 mjpython /Users/zhuran/GMR/scripts/shift_root_height.py \
   retargeting_data/roboot16/run1_subject2.pkl \

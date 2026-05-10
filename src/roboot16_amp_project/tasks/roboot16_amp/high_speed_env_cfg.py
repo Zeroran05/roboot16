@@ -67,7 +67,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=1.8,
+        weight=2.0,
         params={"command_name": "base_velocity", "std": 0.4},
     )
     track_ang_vel_z_exp = RewTerm(
@@ -86,7 +86,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
     )
     feet_mode_time_symmetry = RewTerm(
         func=mdp.feet_mode_time_symmetry_penalty,
-        weight=-0.5,
+        weight=-0.2,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
@@ -95,7 +95,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
     )
     feet_trajectory_symmetry = RewTerm(
         func=mdp.feet_trajectory_symmetry_penalty,
-        weight=-0.5,
+        weight=-0.2,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
@@ -165,29 +165,29 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
         },
     )
     # 惩罚yaw向外翻转过度，奖励yaw向内翻转，正为内转（有助于高速行走时的步态）
-    outward_hip_yaw = RewTerm(
-        func=outward_hip_yaw_penalty,
-        weight=-1.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=["left_hip_yaw_joint", "right_hip_yaw_joint"],
-            ),
-            "outward_threshold": 0.12,
-        },
-    )
-    inward_hip_yaw = RewTerm(
-        func=inward_hip_yaw_reward,
-        weight=0.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=["left_hip_yaw_joint", "right_hip_yaw_joint"],
-            ),
-            "target": 0.25,
-            "std": 0.10,
-        },
-    )
+    # outward_hip_yaw = RewTerm(
+    #     func=outward_hip_yaw_penalty,
+    #     weight=-1.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=["left_hip_yaw_joint", "right_hip_yaw_joint"],
+    #         ),
+    #         "outward_threshold": 0.12,
+    #     },
+    # )
+    # inward_hip_yaw = RewTerm(
+    #     func=inward_hip_yaw_reward,
+    #     weight=0.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=["left_hip_yaw_joint", "right_hip_yaw_joint"],
+    #         ),
+    #         "target": 0.25,
+    #         "std": 0.10,
+    #     },
+    # )
 
 
 @configclass
@@ -203,41 +203,17 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "attr_path": "ranges.lin_vel_x",
             "schedule_name": "lin_vel_x",
             "schedule": [
-                (0, (0.5, 1.5)),
-                (16_800, (0.5, 1.5)),
-                (28_800, (0.5, 2.0)),
-                (40_800, (0.5, 2.5)),
-                (52_800, (0.5, 3.0)),
-                (64_800, (0.5, 3.5)),
-                (76_800, (0.5, 4.0)),
-                (88_800, (0.5, 4.5))
+                (0, (0.3, 1.5)),
+                (16_800, (0.3, 2.0)),
+                (28_800, (0.3, 2.5)),
+                (40_800, (0.3, 3.0)),
+                (52_800, (0.3, 3.5)),
+                (64_800, (0.3, 4.0)),
+                (76_800, (0.3, 4.0)),
+                (88_800, (0.3, 4.5))
             ],
         },
     )
-    # ang_vel_z_range = CurrTerm(
-    #     func=_apply_command_term_schedule,
-    #     params={
-    #         "attr_path": "ranges.ang_vel_z",
-    #         "schedule_name": "ang_vel_z",
-    #         "schedule": [
-    #             (0, (-0.2, 0.2))
-    #         ],
-    #     },
-    # )
-    # standing_env_ratio = CurrTerm(
-    #     func=_apply_command_term_schedule,
-    #     params={
-    #         "attr_path": "rel_standing_envs",
-    #         "schedule_name": "rel_standing_envs",
-    #         "schedule": [
-    #             (0, 0.2),
-    #             (16_800, 0.18),
-    #             (28_800, 0.15),
-    #             (40_800, 0.12),
-    #             (52_800, 0.1)
-    #         ],
-    #     },
-    # )
     track_lin_vel_xy_weight = CurrTerm(
         func=env_mdp.modify_term_cfg,
         params={
@@ -246,13 +222,13 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "modify_params": {
                 "schedule_name": "track_lin_vel_xy_weight",
                 "schedule": [
-                    (0, 1.8),
-                    (16_800, 2.2),
-                    (28_800, 2.6),
-                    (40_800, 3.0),
-                    (52_800, 3.4),
-                    (64_800, 3.8),
-                    (72_800, 4.2)
+                    (0, 2.4),
+                    (16_800, 2.8),
+                    (28_800, 3.2),
+                    (40_800, 3.6),
+                    (52_800, 4.0),
+                    (64_800, 4.4),
+                    (72_800, 4.8)
                 ],
             },
         },
@@ -367,12 +343,12 @@ class Roboot16AmpHighSpeedEnvCfg(Roboot16AmpFlatEnvCfg):
 
         # These are the task-local initial command settings. The curriculum above
         # will progressively overwrite the tracked fields during training.
-        self.commands.base_velocity.rel_standing_envs = 0.0
+        self.commands.base_velocity.rel_standing_envs = 0.1
         self.commands.base_velocity.rel_heading_envs = 0.0
         self.commands.base_velocity.heading_command = False
         self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.2, 0.2)
+        self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
         if hasattr(self.commands.base_velocity.ranges, "heading"):
             self.commands.base_velocity.ranges.heading = (0.0, 0.0)
 

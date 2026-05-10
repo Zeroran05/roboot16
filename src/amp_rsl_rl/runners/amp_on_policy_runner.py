@@ -244,7 +244,7 @@ class AMPOnPolicyRunner:
         self.discriminator = Discriminator(
             input_dim=num_amp_obs * 2,
             amp_obs_dim=num_amp_obs,
-            condition_dim=0,
+            condition_dim=self.discriminator_cfg.get("condition_dim", 0),
             hidden_layer_sizes=self.discriminator_cfg["hidden_dims"],
             reward_scale=self.discriminator_cfg["reward_scale"],
             device=self.device,
@@ -477,10 +477,12 @@ class AMPOnPolicyRunner:
                         next_amp_obs_with_term,
                         task_rewards,
                         self.amp_task_reward_lerp,
+                        condition=command_speed,
                     )
                     style_rewards = self.discriminator.predict_reward(
                         amp_obs,
                         next_amp_obs_with_term,
+                        condition=command_speed,
                     )
 
                     mean_task_reward_log += task_rewards.mean().item()

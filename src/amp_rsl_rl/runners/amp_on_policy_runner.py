@@ -241,10 +241,11 @@ class AMPOnPolicyRunner:
             stand_only_speed_threshold=self.dataset_cfg.get("stand_only_speed_threshold", 0.1),
         )
 
+        condition_dim = int(self.discriminator_cfg.get("condition_dim", 0))
         self.discriminator = Discriminator(
-            input_dim=num_amp_obs * 2,
+            input_dim=num_amp_obs * 2 + condition_dim,
             amp_obs_dim=num_amp_obs,
-            condition_dim=self.discriminator_cfg.get("condition_dim", 0),
+            condition_dim=condition_dim,
             hidden_layer_sizes=self.discriminator_cfg["hidden_dims"],
             reward_scale=self.discriminator_cfg["reward_scale"],
             device=self.device,

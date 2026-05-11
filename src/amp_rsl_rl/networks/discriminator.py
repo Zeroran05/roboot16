@@ -44,7 +44,6 @@ class Discriminator(nn.Module):
         self.input_dim = input_dim
         self.amp_obs_dim = amp_obs_dim
         self.condition_dim = condition_dim
-        self.condition_scale = 4.0
         self.reward_scale = reward_scale
         layers = []
         curr_in_dim = input_dim
@@ -86,7 +85,8 @@ class Discriminator(nn.Module):
             if condition is None:
                 raise ValueError("Conditional discriminator requires a condition tensor.")
             condition = condition.to(state.device, dtype=state.dtype).reshape(state.shape[0], self.condition_dim)
-            condition = condition / self.condition_scale
+            # Map forward-speed commands from the task's nominal [0, 4] range to [-1, 1].
+            condition = (condition - 2.0) / 2.0
             return torch.cat([state, next_state, condition], dim=-1)
         return torch.cat([state, next_state], dim=-1)
 
@@ -220,17 +220,21 @@ class Discriminator(nn.Module):
         Returns:
             Tensor: Gradient penalty value.
         """
+        # Keep the gradient penalty focused on AMP state inputs; the speed
+        # condition still influences discriminator scoring in the forward path.
+        expert = torch.cat(expert_states, -1)
+        data = expert.detach().requires_grad_(True)
         if self.condition_dim > 0:
             if condition is None:
                 raise ValueError("Conditional discriminator requires condition for gradient penalty.")
             condition = condition.to(expert_states[0].device, dtype=expert_states[0].dtype).reshape(
                 expert_states[0].shape[0], self.condition_dim
             )
-            expert = torch.cat([expert_states[0], expert_states[1], condition], -1)
+            condition = (condition - 2.0) / 2.0
+            trunk_input = torch.cat([data, condition.detach()], -1)
         else:
-            expert = torch.cat(expert_states, -1)
-        data = expert.detach().requires_grad_(True)
-        h = self.trunk(data)
+            trunk_input = data
+        h = self.trunk(trunk_input)
         if self.use_minibatch_std:
             with torch.no_grad():
                 s = self._minibatch_std_scalar(h)

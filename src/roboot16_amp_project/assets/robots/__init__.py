@@ -1,1 +1,1 @@
-from .roboot16 import ROBOOT_CFG
+from .roboot16 import ROBOOT_CFG, ROBOOT_MIMIC_ACTION_SCALE

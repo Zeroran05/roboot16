@@ -87,3 +87,17 @@ ROBOOT_CFG = ArticulationCfg(
         ),
     },
 )
+
+
+ROBOOT_MIMIC_ACTION_SCALE = {}
+for actuator_cfg in ROBOOT_CFG.actuators.values():
+    effort_limit = actuator_cfg.effort_limit_sim
+    stiffness = actuator_cfg.stiffness
+    joint_names = actuator_cfg.joint_names_expr
+    if not isinstance(effort_limit, dict):
+        effort_limit = {name: effort_limit for name in joint_names}
+    if not isinstance(stiffness, dict):
+        stiffness = {name: stiffness for name in joint_names}
+    for name in joint_names:
+        if name in effort_limit and name in stiffness and stiffness[name]:
+            ROBOOT_MIMIC_ACTION_SCALE[name] = 0.25 * effort_limit[name] / stiffness[name]

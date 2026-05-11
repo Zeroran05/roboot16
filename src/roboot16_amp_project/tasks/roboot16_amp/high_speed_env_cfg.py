@@ -77,7 +77,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
     )
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
-        weight=0.6,
+        weight=0.8,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
@@ -203,14 +203,14 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "attr_path": "ranges.lin_vel_x",
             "schedule_name": "lin_vel_x",
             "schedule": [
-                (0, (0.3, 1.5)),
-                (16_800, (0.3, 2.0)),
-                (28_800, (0.3, 2.5)),
-                (40_800, (0.3, 3.0)),
-                (52_800, (0.3, 3.5)),
-                (64_800, (0.3, 4.0)),
-                (76_800, (0.3, 4.0)),
-                (88_800, (0.3, 4.0))
+                (0, (0.4, 1.2)),
+                (24_000, (0.4, 1.5)),
+                (36_000, (0.4, 2.0)),
+                (48_000, (0.4, 2.4)),
+                (60_000, (0.4, 2.8)),
+                (72_000, (0.4, 3.2)),
+                (84_000, (0.4, 3.6)),
+                (96_000, (0.4, 4.0))
             ],
         },
     )

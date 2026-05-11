@@ -84,29 +84,29 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
             "threshold": 0.4,
         },
     )
-    feet_mode_time_symmetry = RewTerm(
-        func=mdp.feet_mode_time_symmetry_penalty,
-        weight=-0.2,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
-            "command_threshold": 0.2,
-        },
-    )
-    feet_trajectory_symmetry = RewTerm(
-        func=mdp.feet_trajectory_symmetry_penalty,
-        weight=-0.2,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
-            "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
-            "command_threshold": 0.2,
-            "phase_sigma": 0.12,
-        },
-    )
+    # feet_mode_time_symmetry = RewTerm(
+    #     func=mdp.feet_mode_time_symmetry_penalty,
+    #     weight=-0.2,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+    #         "command_threshold": 0.2,
+    #     },
+    # )
+    # feet_trajectory_symmetry = RewTerm(
+    #     func=mdp.feet_trajectory_symmetry_penalty,
+    #     weight=-0.2,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
+    #         "command_threshold": 0.2,
+    #         "phase_sigma": 0.12,
+    #     },
+    # )
     feet_slide = RewTerm(
         func=mdp.feet_slide,
-        weight=-0.9,
+        weight=-0.2,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names="(left|right)_ankle_roll_link"),
@@ -210,7 +210,7 @@ class Roboot16AmpHighSpeedCurriculumCfg:
                 (52_800, (0.3, 3.5)),
                 (64_800, (0.3, 4.0)),
                 (76_800, (0.3, 4.0)),
-                (88_800, (0.3, 4.5))
+                (88_800, (0.3, 4.0))
             ],
         },
     )
@@ -222,10 +222,10 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "modify_params": {
                 "schedule_name": "track_lin_vel_xy_weight",
                 "schedule": [
-                    (0, 2.4),
-                    (16_800, 2.8),
-                    (28_800, 3.2),
-                    (40_800, 3.6),
+                    (0, 3.0),
+                    (16_800, 3.2),
+                    (28_800, 3.6),
+                    (40_800, 3.8),
                     (52_800, 4.0),
                     (64_800, 4.4),
                     (72_800, 4.8)

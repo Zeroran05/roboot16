@@ -176,7 +176,7 @@ python3 GMR/scripts/export_roboot16_amp_expert.py \
 
 ```bash
 ./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt
+  --txt /root/isaaclab/roboot16/data/amp_expert/stand/stand_0p0.txt
 ```
 
 同时给 `txt + pkl`，root 按 `pkl` 轨迹运动：

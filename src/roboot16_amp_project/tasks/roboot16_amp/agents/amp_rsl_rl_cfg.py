@@ -5,7 +5,7 @@ from pathlib import Path
 from roboot16_amp_project.paths import AMP_EXPERT_DIR
 
 
-AMP_TASK_REWARD_LERP = 0.85 #0.7
+AMP_TASK_REWARD_LERP = 0.5 #0.7
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
 AMP_SPEED_CONDITIONING_TAU = 0.25
 AMP_DATASET_GROUPS = ["stand", "slow", "walk", "jog", "run", "sprint"]
@@ -75,7 +75,7 @@ Roboot16FlatAMPRunnerCfg = {
     },
     "discriminator": {
         "hidden_dims": [1024, 512, 256],
-        "reward_scale": 0.4,# 0.3，奖励太小，提高奖励scale
+        "reward_scale": 1.0,# 0.3，奖励太小，提高奖励scale
         "loss_type": "LSGAN",
         "empirical_normalization": True,
         "condition_dim": 1,

@@ -32,7 +32,7 @@ from .flat_env_cfg import (
 )
 
 
-PLAY_LIN_VEL_X = (3.5, 4.0)
+PLAY_LIN_VEL_X = (1.3, 1.3)
 PLAY_LIN_VEL_Y = (0.0, 0.0)
 PLAY_ANG_VEL_Z = (0.0, 0.0)
 PLAY_RESAMPLING_TIME_RANGE = (1.0e6, 1.0e6)

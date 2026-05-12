@@ -9,9 +9,10 @@ AMP_TASK_REWARD_LERP = 0.6 #0.7
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
 AMP_SPEED_CONDITIONING_TAU = 0.25
 AMP_DATASET_GROUPS = ["stand", "slow", "walk", "jog", "run", "sprint"]
+AMP_USE_CONDITIONAL_DISCRIMINATOR = False
 # Treat only exact zero-speed commands as stand sampling, with a tiny tolerance
 # to avoid floating-point edge cases in the command tensor.
-AMP_STAND_ONLY_SPEED_THRESHOLD = 0.3
+AMP_STAND_ONLY_SPEED_THRESHOLD = 0.1
 
 
 def _collect_amp_txt_datasets(root: Path) -> list[str]:
@@ -78,7 +79,7 @@ Roboot16FlatAMPRunnerCfg = {
         "reward_scale": 1.0,# 0.3，奖励太小，提高奖励scale
         "loss_type": "LSGAN",
         "empirical_normalization": True,
-        "condition_dim": 1,
+        "condition_dim": 1 if AMP_USE_CONDITIONAL_DISCRIMINATOR else 0,
     },
     "dataset": {
         "amp_data_path": str(AMP_DATASET_ROOT),

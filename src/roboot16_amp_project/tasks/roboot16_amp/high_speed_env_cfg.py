@@ -84,6 +84,15 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
             "threshold": 0.4,
         },
     )
+    stand_still = RewTerm(
+        func=mdp.stand_still_joint_deviation_l1,
+        weight=-0.5,
+        params={
+            "command_name": "base_velocity",
+            "command_threshold": 0.1,
+            "asset_cfg": SceneEntityCfg("robot"),
+        },
+    )
     feet_mode_time_symmetry = RewTerm(
         func=mdp.feet_mode_time_symmetry_penalty,
         weight=-0.1,

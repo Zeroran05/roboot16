@@ -23,7 +23,7 @@ import roboot16_amp_project.tasks.roboot16_mimic.mdp as mdp
 
 
 MIMIC_DATA_DIR = DATA_DIR / "mimic"
-DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1.npz")
+DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1_50hz_30s.npz")
 
 VELOCITY_RANGE = {
     "x": (-0.5, 0.5),

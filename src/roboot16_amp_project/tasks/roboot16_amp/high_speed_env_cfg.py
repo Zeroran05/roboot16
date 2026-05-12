@@ -67,7 +67,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=2.0,
+        weight=3.0,
         params={"command_name": "base_velocity", "std": 0.4},
     )
     track_ang_vel_z_exp = RewTerm(
@@ -84,26 +84,26 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
             "threshold": 0.4,
         },
     )
-    # feet_mode_time_symmetry = RewTerm(
-    #     func=mdp.feet_mode_time_symmetry_penalty,
-    #     weight=-0.2,
-    #     params={
-    #         "command_name": "base_velocity",
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
-    #         "command_threshold": 0.2,
-    #     },
-    # )
-    # feet_trajectory_symmetry = RewTerm(
-    #     func=mdp.feet_trajectory_symmetry_penalty,
-    #     weight=-0.2,
-    #     params={
-    #         "command_name": "base_velocity",
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
-    #         "command_threshold": 0.2,
-    #         "phase_sigma": 0.12,
-    #     },
-    # )
+    feet_mode_time_symmetry = RewTerm(
+        func=mdp.feet_mode_time_symmetry_penalty,
+        weight=-0.1,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+            "command_threshold": 0.2,
+        },
+    )
+    feet_trajectory_symmetry = RewTerm(
+        func=mdp.feet_trajectory_symmetry_penalty,
+        weight=-0.1,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
+            "command_threshold": 0.2,
+            "phase_sigma": 0.12,
+        },
+    )
     feet_slide = RewTerm(
         func=mdp.feet_slide,
         weight=-0.2,
@@ -207,50 +207,50 @@ class Roboot16AmpHighSpeedCurriculumCfg:
                 (16_800, (0.3, 2.0)),
                 (36_000, (0.3, 2.5)),
                 (48_000, (0.3, 3.0)),
-                (60_000, (0.3, 3.5)),
+                # (60_000, (0.3, 3.5)),
                 # (72_000, (0.3, 4.0)),
                 # (84_000, (0.4, 3.6)),
                 # (96_000, (0.4, 4.0))
             ],
         },
     )
-    track_lin_vel_xy_weight = CurrTerm(
-        func=env_mdp.modify_term_cfg,
-        params={
-            "address": "rewards.track_lin_vel_xy_exp.weight",
-            "modify_fn": _modify_value_by_schedule,
-            "modify_params": {
-                "schedule_name": "track_lin_vel_xy_weight",
-                "schedule": [
-                    (0, 3.0),
-                    (16_800, 3.2),
-                    (28_800, 3.6),
-                    (40_800, 3.8),
-                    (52_800, 4.0),
-                    (64_800, 4.4),
-                    (72_800, 4.8)
-                ],
-            },
-        },
-    )
-    track_lin_vel_xy_std = CurrTerm(
-        func=env_mdp.modify_term_cfg,
-        params={
-            "address": "rewards.track_lin_vel_xy_exp.params.std",
-            "modify_fn": _modify_value_by_schedule,
-            "modify_params": {
-                "schedule_name": "track_lin_vel_xy_std",
-                "schedule": [
-                    (0, 0.4),
-                    (28_800, 0.4),
-                    (52_800, 0.5),
-                    (64_800, 0.5),
-                    (77_600, 0.6),
-                    (80_000, 0.55)
-                ],
-            },
-        },
-    )
+    # track_lin_vel_xy_weight = CurrTerm(
+    #     func=env_mdp.modify_term_cfg,
+    #     params={
+    #         "address": "rewards.track_lin_vel_xy_exp.weight",
+    #         "modify_fn": _modify_value_by_schedule,
+    #         "modify_params": {
+    #             "schedule_name": "track_lin_vel_xy_weight",
+    #             "schedule": [
+    #                 (0, 3.0),
+    #                 (16_800, 3.2),
+    #                 (28_800, 3.6),
+    #                 (40_800, 3.8),
+    #                 (52_800, 4.0),
+    #                 (64_800, 4.4),
+    #                 (72_800, 4.8)
+    #             ],
+    #         },
+    #     },
+    # )
+    # track_lin_vel_xy_std = CurrTerm(
+    #     func=env_mdp.modify_term_cfg,
+    #     params={
+    #         "address": "rewards.track_lin_vel_xy_exp.params.std",
+    #         "modify_fn": _modify_value_by_schedule,
+    #         "modify_params": {
+    #             "schedule_name": "track_lin_vel_xy_std",
+    #             "schedule": [
+    #                 (0, 0.4),
+    #                 (28_800, 0.4),
+    #                 (52_800, 0.5),
+    #                 (64_800, 0.5),
+    #                 (77_600, 0.6),
+    #                 (80_000, 0.55)
+    #             ],
+    #         },
+    #     },
+    # )
     # track_ang_vel_z_weight = CurrTerm(
     #     func=env_mdp.modify_term_cfg,
     #     params={

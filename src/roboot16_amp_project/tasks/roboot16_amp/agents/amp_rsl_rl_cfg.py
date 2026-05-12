@@ -5,7 +5,7 @@ from pathlib import Path
 from roboot16_amp_project.paths import AMP_EXPERT_DIR
 
 
-AMP_TASK_REWARD_LERP = 0.5 #0.7
+AMP_TASK_REWARD_LERP = 0.6 #0.7
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
 AMP_SPEED_CONDITIONING_TAU = 0.25
 AMP_DATASET_GROUPS = ["stand", "slow", "walk", "jog", "run", "sprint"]
@@ -37,7 +37,7 @@ Roboot16FlatAMPRunnerCfg = {
     "seed": 42,
     "device": "cuda:0",
     "num_steps_per_env": 24,
-    "max_iterations": 10000,
+    "max_iterations": 20000,
     "save_interval": 100,
     "experiment_name": "roboot16_amp_flat_project",
     "run_name": "run_high_speed",

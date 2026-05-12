@@ -86,6 +86,7 @@ class MotionCommand(CommandTerm):
         )
         self.kernel = self.kernel / self.kernel.sum()
 
+        # 初始化创建这些metric
         self.metrics["error_anchor_pos"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_anchor_rot"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_anchor_lin_vel"] = torch.zeros(self.num_envs, device=self.device)

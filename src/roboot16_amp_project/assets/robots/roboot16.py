@@ -75,13 +75,13 @@ ROBOOT_CFG = ArticulationCfg(
         ),
         "ankle_pitch": ImplicitActuatorCfg(
             joint_names_expr=["left_ankle_pitch_joint", "right_ankle_pitch_joint"],
-            effort_limit_sim=100,
+            effort_limit_sim=40,
             stiffness={".*": 20.0},
             damping={".*": 4.0},
         ),
         "ankle_roll": ImplicitActuatorCfg(
             joint_names_expr=["left_ankle_roll_joint", "right_ankle_roll_joint"],
-            effort_limit_sim=100,
+            effort_limit_sim=40,
             stiffness={".*": 20.0},
             damping={".*": 4.0},
         ),

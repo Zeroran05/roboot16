@@ -9,7 +9,7 @@ AMP_TASK_REWARD_LERP = 0.6 #0.7
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
 AMP_SPEED_CONDITIONING_TAU = 0.25
 AMP_DATASET_GROUPS = ["stand", "slow", "walk", "jog", "run", "sprint"]
-AMP_USE_CONDITIONAL_DISCRIMINATOR = False
+AMP_USE_CONDITIONAL_DISCRIMINATOR = True
 # Treat only exact zero-speed commands as stand sampling, with a tiny tolerance
 # to avoid floating-point edge cases in the command tensor.
 AMP_STAND_ONLY_SPEED_THRESHOLD = 0.1

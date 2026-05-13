@@ -9,6 +9,10 @@ class Roboot16MimicPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     save_interval = 500
     experiment_name = "roboot16_mimic_project"
     empirical_normalization = False
+    obs_groups = {
+        "policy": ["policy"],
+        "critic": ["critic"],
+    }
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
         actor_hidden_dims=[512, 256, 128],

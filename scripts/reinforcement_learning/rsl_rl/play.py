@@ -68,6 +68,25 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 logger = logging.getLogger(__name__)
 
 
+def _unwrap_env(env):
+    """Return the underlying Isaac Lab env when wrapped by Gym/RL adapters."""
+    return getattr(env, "unwrapped", env)
+
+
+def _update_camera_follow(env) -> None:
+    """Keep the viewer camera centered on the robot root in env 0."""
+    base_env = _unwrap_env(env)
+    robot = base_env.scene["robot"]
+    root_pos = robot.data.root_pos_w[0].detach().cpu()
+    target = root_pos.tolist()
+    eye = [
+        target[0] + 2.0,
+        target[1] + 2.0,
+        target[2] + 0.7,
+    ]
+    base_env.sim.set_camera_view(eye=eye, target=target)
+
+
 @hydra_task_config(args_cli.task, args_cli.agent)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
     task_name = args_cli.task.split(":")[-1]
@@ -136,6 +155,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     dt = env.unwrapped.step_dt
     obs = env.get_observations()
+    _update_camera_follow(env)
     timestep = 0
     while simulation_app.is_running():
         start_time = time.time()
@@ -143,6 +163,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             actions = policy(obs)
             obs, _, dones, _ = env.step(actions)
             policy_nn.reset(dones)
+        _update_camera_follow(env)
         if args_cli.video:
             timestep += 1
             if timestep == args_cli.video_length:

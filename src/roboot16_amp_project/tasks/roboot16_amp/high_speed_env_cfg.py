@@ -89,7 +89,7 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
         weight=-0.5,
         params={
             "command_name": "base_velocity",
-            "command_threshold": 0.1,
+            "command_threshold": 0.01,
             "asset_cfg": SceneEntityCfg("robot"),
         },
     )

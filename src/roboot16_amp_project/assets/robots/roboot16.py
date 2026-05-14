@@ -36,12 +36,16 @@ ROBOOT_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.96),
         joint_pos={
-            ".*_hip_yaw_joint": 0.0,
-            ".*_hip_roll_joint": 0.0,
-            ".*_hip_pitch_joint": -0.28,
-            ".*_knee_joint": 0.58,
-            ".*_ankle_pitch_joint": -0.32,
-            ".*_ankle_roll_joint": 0.0,
+            # Stand reference extracted from the AMP stand expert clips
+            # (original + mirrored) so low-speed stand rewards pull toward the
+            # same pose family used by the expert data rather than a hand-tuned
+            # crouched default pose.
+            ".*_hip_yaw_joint": 0.0005,
+            ".*_hip_roll_joint": -0.0079,
+            ".*_hip_pitch_joint": -0.0195,
+            ".*_knee_joint": 0.0441,
+            ".*_ankle_pitch_joint": -0.0068,
+            ".*_ankle_roll_joint": 0.0185,
         },
         joint_vel={".*": 0.0},
     ),

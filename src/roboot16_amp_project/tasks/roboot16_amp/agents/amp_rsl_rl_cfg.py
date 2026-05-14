@@ -5,14 +5,14 @@ from pathlib import Path
 from roboot16_amp_project.paths import AMP_EXPERT_DIR
 
 
-AMP_TASK_REWARD_LERP = 0.6 #0.7
+AMP_TASK_REWARD_LERP = 0.7 #0.7  0.5，0.6时都能有步态，但跟踪速度上不去
 AMP_DATASET_ROOT = AMP_EXPERT_DIR
 AMP_SPEED_CONDITIONING_TAU = 0.25
 AMP_DATASET_GROUPS = ["stand", "slow", "walk", "jog", "run", "sprint"]
 AMP_USE_CONDITIONAL_DISCRIMINATOR = True
 # Treat only exact zero-speed commands as stand sampling, with a tiny tolerance
 # to avoid floating-point edge cases in the command tensor.
-AMP_STAND_ONLY_SPEED_THRESHOLD = 0.1
+AMP_STAND_ONLY_SPEED_THRESHOLD = 0.01
 
 
 def _collect_amp_txt_datasets(root: Path) -> list[str]:

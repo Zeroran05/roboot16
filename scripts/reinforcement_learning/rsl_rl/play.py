@@ -61,6 +61,7 @@ from isaaclab.utils.dict import print_dict
 from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper, export_policy_as_jit, export_policy_as_onnx
 
 import roboot16_amp_project  # noqa: F401
+from roboot16_amp_project.utils import attach_onnx_metadata, export_motion_policy_as_onnx
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
@@ -85,6 +86,28 @@ def _update_camera_follow(env) -> None:
         target[2] + 0.7,
     ]
     base_env.sim.set_camera_view(eye=eye, target=target)
+
+
+def _has_motion_command(env) -> bool:
+    base_env = _unwrap_env(env)
+    active_terms = getattr(base_env.command_manager, "active_terms", [])
+    return "motion" in active_terms
+
+
+def _export_policy_artifacts(env, policy_nn, normalizer, export_model_dir: str, run_path: str) -> None:
+    base_env = _unwrap_env(env)
+    export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.pt")
+    if _has_motion_command(base_env):
+        export_motion_policy_as_onnx(
+            base_env,
+            policy_nn,
+            normalizer=normalizer,
+            path=export_model_dir,
+            filename="policy.onnx",
+        )
+        attach_onnx_metadata(base_env, run_path, export_model_dir, filename="policy.onnx")
+    else:
+        export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
 
 
 @hydra_task_config(args_cli.task, args_cli.agent)
@@ -150,8 +173,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         normalizer = None
 
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.pt")
-    export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
+    _export_policy_artifacts(env, policy_nn, normalizer, export_model_dir, resume_path)
 
     dt = env.unwrapped.step_dt
     obs = env.get_observations()

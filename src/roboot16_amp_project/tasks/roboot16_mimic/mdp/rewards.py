@@ -80,3 +80,56 @@ def feet_contact_time(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, thresh
     last_contact_time = contact_sensor.data.last_contact_time[:, sensor_cfg.body_ids]
     reward = torch.sum((last_contact_time < threshold) * first_air, dim=-1)
     return reward
+
+
+def reference_foot_phase_contact_reward(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+    body_names: list[str],
+    ground_height: float = 0.0,
+    contact_force_threshold: float = 1.0,
+    stance_height_threshold: float = 0.08,
+    stance_height_sigma: float = 0.02,
+    stance_speed_threshold: float = 0.25,
+    stance_speed_sigma: float = 0.08,
+    stance_vz_threshold: float = 0.20,
+    stance_vz_sigma: float = 0.08,
+) -> torch.Tensor:
+    """Reward matching real foot contact state to a stance/swing phase inferred from the reference motion.
+
+    Since the reference npz does not carry explicit contact labels, we infer stance probability from the
+    reference foot height and foot speed. Low feet with low horizontal and vertical speed are treated as
+    high-probability stance frames. The reward is high when the robot's measured contact state matches that
+    inferred reference phase.
+    """
+    command: MotionCommand = env.command_manager.get_term(command_name)
+    body_indexes = _get_body_indexes(command, body_names)
+
+    if len(body_indexes) != len(sensor_cfg.body_ids):
+        raise ValueError(
+            "reference_foot_phase_contact_reward expects the same number of tracked feet in "
+            f"body_names ({len(body_indexes)}) and sensor_cfg.body_ids ({len(sensor_cfg.body_ids)})."
+        )
+
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0]
+        > contact_force_threshold
+    ).float()
+
+    ref_foot_pos_w = command.body_pos_w[:, body_indexes]
+    ref_foot_lin_vel_w = command.body_lin_vel_w[:, body_indexes]
+
+    ref_height = ref_foot_pos_w[..., 2] - ground_height
+    ref_xy_speed = torch.norm(ref_foot_lin_vel_w[..., :2], dim=-1)
+    ref_vz_abs = torch.abs(ref_foot_lin_vel_w[..., 2])
+
+    # Soft stance likelihood from reference motion.
+    height_score = torch.sigmoid((stance_height_threshold - ref_height) / stance_height_sigma)
+    xy_speed_score = torch.sigmoid((stance_speed_threshold - ref_xy_speed) / stance_speed_sigma)
+    vz_score = torch.sigmoid((stance_vz_threshold - ref_vz_abs) / stance_vz_sigma)
+    stance_probability = height_score * xy_speed_score * vz_score
+
+    reward = 1.0 - torch.abs(contacts - stance_probability)
+    return reward.mean(dim=-1)

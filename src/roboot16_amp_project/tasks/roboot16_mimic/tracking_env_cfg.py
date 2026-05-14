@@ -20,6 +20,7 @@ from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from roboot16_amp_project.assets.robots import ROBOOT_CFG, ROBOOT_MIMIC_ACTION_SCALE
 from roboot16_amp_project.paths import DATA_DIR
 import roboot16_amp_project.tasks.roboot16_mimic.mdp as mdp
+from roboot16_amp_project.tasks.manager_based.locomotion.velocity import mdp as locomotion_mdp
 
 
 MIMIC_DATA_DIR = DATA_DIR / "mimic"
@@ -196,7 +197,7 @@ class RewardsCfg:
     )
     motion_body_pos = RewTerm(
         func=mdp.motion_relative_body_position_error_exp,
-        weight=1.0,
+        weight=0.8,
         params={"command_name": "motion", "std": 0.3},
     )
     motion_body_ori = RewTerm(
@@ -213,6 +214,31 @@ class RewardsCfg:
         func=mdp.motion_global_body_angular_velocity_error_exp,
         weight=1.0,
         params={"command_name": "motion", "std": 3.14},
+    )
+    reference_foot_phase_contact = RewTerm(
+        func=mdp.reference_foot_phase_contact_reward,
+        weight=0.5,
+        params={
+            "command_name": "motion",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
+            "body_names": ["left_ankle_roll_link", "right_ankle_roll_link"],
+            "ground_height": 0.0,
+            "contact_force_threshold": 1.0,
+            "stance_height_threshold": 0.08,
+            "stance_height_sigma": 0.02,
+            "stance_speed_threshold": 0.25,
+            "stance_speed_sigma": 0.08,
+            "stance_vz_threshold": 0.20,
+            "stance_vz_sigma": 0.08,
+        },
+    )
+    feet_slide = RewTerm(
+        func=locomotion_mdp.feet_slide,
+        weight=-0.5,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names="(left|right)_ankle_roll_link"),
+        },
     )
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-1e-1)
     joint_limit = RewTerm(

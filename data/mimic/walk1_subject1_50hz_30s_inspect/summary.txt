@@ -1,0 +1,49 @@
+Motion file: roboot16/data/mimic/walk1_subject1_50hz_30s.npz
+Frames: 1500
+FPS: 50.000000
+Duration: 30.000 s
+Joint pos shape: (1500, 12)
+Joint vel shape: (1500, 12)
+Body pos shape: (1500, 13, 3)
+Body quat shape: (1500, 13, 4)
+Body lin vel shape: (1500, 13, 3)
+Body ang vel shape: (1500, 13, 3)
+
+Body order assumption: ['base_link', 'right_hip_pitch_link', 'right_hip_roll_link', 'right_hip_yaw_link', 'right_knee_link', 'right_ankle_pitch_link', 'right_ankle_roll_link', 'left_hip_pitch_link', 'left_hip_roll_link', 'left_hip_yaw_link', 'left_knee_link', 'left_ankle_pitch_link', 'left_ankle_roll_link']
+Base body: base_link (index 0)
+Left foot body: left_ankle_roll_link (index 12)
+Right foot body: right_ankle_roll_link (index 6)
+
+Base z: min=0.8965 m, mean=0.9317 m, max=0.9668 m
+Left foot z: min=0.0441 m, mean=0.0856 m, max=0.2276 m
+Right foot z: min=0.7189 m, mean=0.7739 m, max=0.8082 m
+Base linear speed: min=0.0005 m/s, mean=0.5723 m/s, max=1.2679 m/s
+Base angular speed: min=0.0031 rad/s, mean=0.5556 rad/s, max=1.9585 rad/s
+Left foot linear speed: min=0.0002 m/s, mean=0.6626 m/s, max=3.5238 m/s
+Right foot linear speed: min=0.0003 m/s, mean=0.6057 m/s, max=2.0244 m/s
+Left foot angular speed: min=0.0008 rad/s, mean=1.6392 rad/s, max=6.6008 rad/s
+Right foot angular speed: min=0.0011 rad/s, mean=0.9822 rad/s, max=6.0482 rad/s
+Joint velocity norm: min=0.0162 rad/s, mean=3.1767 rad/s, max=8.5647 rad/s
+Base linear acceleration norm: min=0.0030 m/s^2, mean=1.8965 m/s^2, max=15.6927 m/s^2
+
+Left foot penetration summary:
+  z < +0.000 m: 0 frames (0.00%)
+  z < -0.005 m: 0 frames (0.00%)
+  z < -0.010 m: 0 frames (0.00%)
+  z < -0.020 m: 0 frames (0.00%)
+
+Right foot penetration summary:
+  z < +0.000 m: 0 frames (0.00%)
+  z < -0.005 m: 0 frames (0.00%)
+  z < -0.010 m: 0 frames (0.00%)
+  z < -0.020 m: 0 frames (0.00%)
+
+Max frame-to-frame joint pos delta norm: 0.1754 rad
+Max frame-to-frame joint vel delta norm: 3.1265 rad/s
+Max frame-to-frame body linear-velocity delta norm: 0.8287 m/s
+Max frame-to-frame body angular-velocity delta norm: 3.4288 rad/s
+Most penetrated left-foot frame: 1448 (z=0.0441 m)
+Most penetrated right-foot frame: 844 (z=0.7189 m)
+Largest joint-velocity frame jump index: 1449
+Largest body linear-velocity frame jump index: 459
+Largest body angular-velocity frame jump index: 1449

@@ -166,6 +166,21 @@ def track_lin_vel_xy_yaw_frame_exp(
     return torch.exp(-lin_vel_error / std**2)
 
 
+def forward_vel_x_error_abs_yaw_frame(
+    env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Absolute forward-speed tracking error in the gravity-aligned yaw frame.
+
+    Unlike the exponential tracking reward, this term does not saturate as quickly
+    when the commanded speed is far from the achieved speed, so it keeps providing
+    a meaningful learning signal in high-error regimes.
+    """
+    asset = env.scene[asset_cfg.name]
+    vel_yaw = quat_apply_inverse(yaw_quat(asset.data.root_quat_w), asset.data.root_lin_vel_w[:, :3])
+    command_vx = env.command_manager.get_command(command_name)[:, 0]
+    return torch.abs(command_vx - vel_yaw[:, 0])
+
+
 def track_ang_vel_z_world_exp(
     env, command_name: str, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:

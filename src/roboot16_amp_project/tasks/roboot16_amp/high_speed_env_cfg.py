@@ -70,6 +70,11 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
         weight=3.0,
         params={"command_name": "base_velocity", "std": 0.4},
     )
+    # forward_vel_x_error = RewTerm(
+    #     func=mdp.forward_vel_x_error_abs_yaw_frame,
+    #     weight=-0.5,
+    #     params={"command_name": "base_velocity"},
+    # )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
         weight=1.2,
@@ -212,12 +217,10 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "attr_path": "ranges.lin_vel_x",
             "schedule_name": "lin_vel_x",
             "schedule": [
-                (0, (0.3, 1.8)),
-                (16_800, (0.3, 2.0)),
-                (36_000, (0.3, 2.5)),
-                (48_000, (0.3, 3.0)),
-                # (60_000, (0.3, 3.5)),
-                # (72_000, (0.3, 4.0)),
+                (0, (0.3, 2.0)),
+                (36_000, (1.0, 2.8)),
+                (60_000, (1.5, 3.5)),
+                (84_000, (2.0, 4.0)),
                 # (84_000, (0.4, 3.6)),
                 # (96_000, (0.4, 4.0))
             ],

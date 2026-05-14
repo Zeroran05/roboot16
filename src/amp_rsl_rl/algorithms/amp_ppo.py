@@ -460,12 +460,19 @@ class AMP_PPO:
             expert_next_state_raw = expert_next_state.detach().clone()
 
             B_pol = policy_state.size(0)
-            condition_tensor = policy_command_speed if self.discriminator.condition_dim > 0 else None
+            if self.discriminator.condition_dim > 0:
+                policy_condition_tensor = policy_command_speed.reshape(B_pol, self.discriminator.condition_dim)
+                expert_condition_tensor = self.amp_data.clip_speeds[expert_clip_idx].reshape(
+                    B_pol, self.discriminator.condition_dim
+                )
+            else:
+                policy_condition_tensor = None
+                expert_condition_tensor = None
             policy_input = self.discriminator._build_input(
-                policy_state, policy_next_state, condition_tensor
+                policy_state, policy_next_state, policy_condition_tensor
             )
             expert_input = self.discriminator._build_input(
-                expert_state, expert_next_state, condition_tensor
+                expert_state, expert_next_state, expert_condition_tensor
             )
             discriminator_input = torch.cat((policy_input, expert_input), dim=0)
             discriminator_output = self.discriminator(discriminator_input)
@@ -480,8 +487,8 @@ class AMP_PPO:
                 expert_d=expert_d,
                 sample_amp_expert=(expert_state, expert_next_state),
                 sample_amp_policy=(policy_state, policy_next_state),
-                policy_condition=condition_tensor,
-                expert_condition=condition_tensor,
+                policy_condition=policy_condition_tensor,
+                expert_condition=expert_condition_tensor,
                 lambda_=10,
             )
 

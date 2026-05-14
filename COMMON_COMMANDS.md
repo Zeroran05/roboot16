@@ -205,3 +205,31 @@ python3 GMR/scripts/export_roboot16_amp_expert.py \
   --pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl \
   --compare-only
 ```
+
+## 5.mimic 相关指令
+1. 训练：
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py   --task Isaac-Roboot16-Mimic-Project-v0   --headless   --video   --video_interval 8000
+2. resume训练：
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py   --task Isaac-Roboot16-Mimic-Project-v0   --headless   --resume   --load_run 2026-05-13_16-59-21   --checkpoint model_1500.pt   --video   --video_interval 6000
+3. play和导出onnx
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/play.py \
+  --task Isaac-Roboot16-Mimic-Project-Play-v0 \
+  --checkpoint /root/isaaclab/roboot16/logs/rsl_rl/roboot16_mimic_project/2026-05-13_19-17-47/model_11000.pt \
+  --headless \
+  --video \
+  --video_length 1500 && \
+cp /root/isaaclab/roboot16/logs/rsl_rl/roboot16_mimic_project/2026-05-13_19-17-47/exported/policy.onnx \
+   /root/isaaclab/roboot16/deploy/pre_train/roboot16_mimic/policy.onnx
+   
+4. 在 Isaac Sim 中回放 npz
+./isaaclab.sh -p roboot16/scripts/mimic/replay_npz.py \
+  --motion_file roboot16/data/mimic/walk1_subject1_short_50hz.npz
+
+5. csv转npz
+./isaaclab.sh -p roboot16/scripts/mimic/csv_to_npz.py \
+  --input_file roboot16/data/mimic/walk1subject1_short.csv \
+  --input_fps 30 \
+  --output_file roboot16/data/mimic/walk1subject1_short_50hz.npz \
+  --output_fps 50 \
+  --headless
+

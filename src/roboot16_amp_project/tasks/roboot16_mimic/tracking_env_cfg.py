@@ -24,7 +24,7 @@ from roboot16_amp_project.tasks.manager_based.locomotion.velocity import mdp as 
 
 
 MIMIC_DATA_DIR = DATA_DIR / "mimic"
-DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1_50hz_30s.npz")
+DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1_short_50hz.npz")
 
 VELOCITY_RANGE = {
     "x": (-0.5, 0.5),
@@ -215,23 +215,23 @@ class RewardsCfg:
         weight=1.0,
         params={"command_name": "motion", "std": 3.14},
     )
-    reference_foot_phase_contact = RewTerm(
-        func=mdp.reference_foot_phase_contact_reward,
-        weight=0.5,
-        params={
-            "command_name": "motion",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
-            "body_names": ["left_ankle_roll_link", "right_ankle_roll_link"],
-            "ground_height": 0.0,
-            "contact_force_threshold": 1.0,
-            "stance_height_threshold": 0.08,
-            "stance_height_sigma": 0.02,
-            "stance_speed_threshold": 0.25,
-            "stance_speed_sigma": 0.08,
-            "stance_vz_threshold": 0.20,
-            "stance_vz_sigma": 0.08,
-        },
-    )
+    # reference_foot_phase_contact = RewTerm(
+    #     func=mdp.reference_foot_phase_contact_reward,
+    #     weight=0.5,
+    #     params={
+    #         "command_name": "motion",
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
+    #         "body_names": ["left_ankle_roll_link", "right_ankle_roll_link"],
+    #         "ground_height": 0.0,
+    #         "contact_force_threshold": 1.0,
+    #         "stance_height_threshold": 0.08,
+    #         "stance_height_sigma": 0.02,
+    #         "stance_speed_threshold": 0.25,
+    #         "stance_speed_sigma": 0.08,
+    #         "stance_vz_threshold": 0.20,
+    #         "stance_vz_sigma": 0.08,
+    #     },
+    # )
     feet_slide = RewTerm(
         func=locomotion_mdp.feet_slide,
         weight=-0.5,

@@ -10,7 +10,7 @@ import mujoco.viewer
 import numpy as np
 import onnx
 
-from deploy_mujoco_roboot16 import build_joint_maps, initialize_pose, pd_control, quat_wxyz_to_rotmat
+from deploy_mujoco_roboot16 import build_joint_maps, initialize_pose, quat_wxyz_to_rotmat
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -201,6 +201,79 @@ def _update_camera_follow(viewer, data: mujoco.MjData, lookat_height: float) -> 
     )
 
 
+def _joint_name_to_ids(model: mujoco.MjModel) -> dict[str, tuple[int, int, int]]:
+    """Map joint name -> (joint_id, qpos_adr, dof_adr)."""
+    mapping: dict[str, tuple[int, int, int]] = {}
+    for jid in range(model.njnt):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, jid)
+        if name is None:
+            continue
+        mapping[name] = (jid, model.jnt_qposadr[jid], model.jnt_dofadr[jid])
+    return mapping
+
+
+def _actuator_summary(model: mujoco.MjModel, joint_names: Sequence[str]) -> list[dict]:
+    joint_map = _joint_name_to_ids(model)
+    joint_to_actuator = {}
+    for aid in range(model.nu):
+        if model.actuator_trntype[aid] != mujoco.mjtTrn.mjTRN_JOINT:
+            continue
+        joint_to_actuator[model.actuator_trnid[aid, 0]] = aid
+
+    summary = []
+    for joint_name in joint_names:
+        if joint_name not in joint_map:
+            raise KeyError(f"Joint '{joint_name}' not found in MuJoCo model.")
+        jid, _, _ = joint_map[joint_name]
+        if jid not in joint_to_actuator:
+            raise KeyError(f"Joint '{joint_name}' has no actuator in MuJoCo model.")
+        aid = joint_to_actuator[jid]
+        summary.append(
+            {
+                "joint_name": joint_name,
+                "actuator_id": aid,
+                "kp": float(model.actuator_gainprm[aid, 0]),
+                "kv": float(model.actuator_biasprm[aid, 2] * -1.0),
+                "forcerange": (
+                    float(model.actuator_forcerange[aid, 0]),
+                    float(model.actuator_forcerange[aid, 1]),
+                ),
+                "ctrlrange": (
+                    float(model.actuator_ctrlrange[aid, 0]),
+                    float(model.actuator_ctrlrange[aid, 1]),
+                ),
+            }
+        )
+    return summary
+
+
+def _print_alignment_report(model: mujoco.MjModel, spec: dict) -> None:
+    actuator_rows = _actuator_summary(model, spec["joint_names"])
+    print("[align] MuJoCo actuator alignment report")
+    mismatches = 0
+    for i, row in enumerate(actuator_rows):
+        expected_kp = float(spec["joint_stiffness"][i])
+        expected_kv = float(spec["joint_damping"][i])
+        force_limit = max(abs(row["forcerange"][0]), abs(row["forcerange"][1]))
+        expected_force = expected_kp * float(spec["action_scale"][i]) * 4.0
+        kp_ok = np.isclose(row["kp"], expected_kp, atol=1e-4)
+        kv_ok = np.isclose(row["kv"], expected_kv, atol=1e-4)
+        force_ok = np.isclose(force_limit, expected_force, atol=1e-3)
+        status = "OK" if kp_ok and kv_ok and force_ok else "WARN"
+        if status != "OK":
+            mismatches += 1
+        print(
+            f"[align:{status}] {row['joint_name']}: "
+            f"kp={row['kp']:.3f} expected={expected_kp:.3f}, "
+            f"kv={row['kv']:.3f} expected={expected_kv:.3f}, "
+            f"|force|={force_limit:.3f} expected~={expected_force:.3f}"
+        )
+    if mismatches == 0:
+        print("[align] All joint actuators match exported training parameters closely.")
+    else:
+        print(f"[align] Found {mismatches} actuator mismatches. Review the WARN lines above.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deploy a mimic/tracking ONNX policy on Roboot16 MuJoCo.")
     parser.add_argument("--onnx", type=Path, required=True, help="Path to exported policy.onnx.")
@@ -208,7 +281,6 @@ def main() -> None:
     parser.add_argument("--simulation-dt", type=float, default=0.005, help="MuJoCo simulation time-step.")
     parser.add_argument("--control-decimation", type=int, default=4, help="Run the policy every N sim steps.")
     parser.add_argument("--seconds", type=float, default=None, help="Optional wall-clock run duration.")
-    parser.add_argument("--control-mode", choices=("position", "torque_pd"), default="position")
     parser.add_argument("--base-height", type=float, default=None, help="Initial floating-base height.")
     parser.add_argument("--init-auto-ground", action="store_true", help="Auto-place the robot slightly above the ground.")
     parser.add_argument("--init-clearance", type=float, default=0.01, help="Clearance used with auto-ground placement.")
@@ -253,6 +325,7 @@ def main() -> None:
         )
     if len(spec["action_scale"]) != len(qpos_adrs):
         raise ValueError(f"action_scale length {len(spec['action_scale'])} does not match policy joints {len(qpos_adrs)}.")
+    _print_alignment_report(model, spec)
 
     if args.base_height is None and args.init_auto_ground:
         initialize_pose(
@@ -335,14 +408,8 @@ def main() -> None:
             policy_step_count += 1
 
         q = data.qpos[qpos_adrs]
-        dq = data.qvel[dof_adrs]
-        if args.control_mode == "position":
-            data.ctrl[:] = 0.0
-            data.ctrl[act_ids] = target_dof_pos
-        else:
-            tau = pd_control(target_dof_pos, q, spec["joint_stiffness"], np.zeros_like(dq), dq, spec["joint_damping"])
-            data.ctrl[:] = 0.0
-            data.ctrl[act_ids] = tau
+        data.ctrl[:] = 0.0
+        data.ctrl[act_ids] = target_dof_pos
 
         mujoco.mj_step(model, data)
         step_count += 1

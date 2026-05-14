@@ -180,14 +180,14 @@
     <position class="roboot16" name="right_hip_roll_motor" joint="right_hip_roll_joint" kp="150" kv="5" ctrlrange="-0.8 2.0" forcerange="-300 300"/>
     <position class="roboot16" name="right_hip_yaw_motor" joint="right_hip_yaw_joint" kp="150" kv="5" ctrlrange="-2.6 2.6" forcerange="-300 300"/>
     <position class="roboot16" name="right_knee_motor" joint="right_knee_joint" kp="200" kv="5" ctrlrange="-0.2 1.8" forcerange="-300 300"/>
-    <position class="roboot16" name="right_ankle_pitch_motor" joint="right_ankle_pitch_joint" kp="20" kv="4" ctrlrange="-0.5 1.0" forcerange="-140 140"/>
-    <position class="roboot16" name="right_ankle_roll_motor" joint="right_ankle_roll_joint" kp="20" kv="4" ctrlrange="-0.4 0.4" forcerange="-140 140"/>
+    <position class="roboot16" name="right_ankle_pitch_motor" joint="right_ankle_pitch_joint" kp="20" kv="4" ctrlrange="-0.5 1.0" forcerange="-40 40"/>
+    <position class="roboot16" name="right_ankle_roll_motor" joint="right_ankle_roll_joint" kp="20" kv="4" ctrlrange="-0.4 0.4" forcerange="-40 40"/>
     <position class="roboot16" name="left_hip_pitch_motor" joint="left_hip_pitch_joint" kp="200" kv="5" ctrlrange="-2.6 2.6" forcerange="-300 300"/>
     <position class="roboot16" name="left_hip_roll_motor" joint="left_hip_roll_joint" kp="150" kv="5" ctrlrange="-0.8 2.0" forcerange="-300 300"/>
     <position class="roboot16" name="left_hip_yaw_motor" joint="left_hip_yaw_joint" kp="150" kv="5" ctrlrange="-2.6 2.6" forcerange="-300 300"/>
     <position class="roboot16" name="left_knee_motor" joint="left_knee_joint" kp="200" kv="5" ctrlrange="-0.2 1.8" forcerange="-300 300"/>
-    <position class="roboot16" name="left_ankle_pitch_motor" joint="left_ankle_pitch_joint" kp="20" kv="4" ctrlrange="-0.5 1.0" forcerange="-140 140"/>
-    <position class="roboot16" name="left_ankle_roll_motor" joint="left_ankle_roll_joint" kp="20" kv="4" ctrlrange="-0.4 0.4" forcerange="-140 140"/>
+    <position class="roboot16" name="left_ankle_pitch_motor" joint="left_ankle_pitch_joint" kp="20" kv="4" ctrlrange="-0.5 1.0" forcerange="-40 40"/>
+    <position class="roboot16" name="left_ankle_roll_motor" joint="left_ankle_roll_joint" kp="20" kv="4" ctrlrange="-0.4 0.4" forcerange="-40 40"/>
   </actuator>
 
   <sensor>

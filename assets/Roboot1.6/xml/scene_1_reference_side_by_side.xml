@@ -1,0 +1,115 @@
+<mujoco model="roboot16_scene_1">
+  <include file="/Users/zhuran/IsaacLab/roboot16/assets/Roboot1.6/xml/roboot16_1.xml" />
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />
+    <rgba haze="0.15 0.25 0.35 1" />
+    <global azimuth="140" elevation="-20" />
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2" />
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" condim="3" friction="1.2 0.02 0.01" />
+  <body name="ref_base_link" pos="0 1.0 1.0" childclass="roboot16">
+      <inertial pos="0.00049152 -3.0954e-08 0.25629" mass="31.023" fullinertia="0.26899 0.13808 0.24725 4.7185e-10 -2.7449e-06 1.2373e-10" />
+      <freejoint />
+      <geom class="visual" material="silver" mesh="base_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+      <geom class="collision" type="box" pos="0 0 0.21" size="0.1 0.105 0.175" rgba="0.75 0.75 0.75 0.35" contype="0" conaffinity="0" />
+      <site name="ref_imu" pos="0 0 0.26" />
+
+      <body name="ref_right_hip_pitch_link" pos="0.00049158 -0.10845 0.059136">
+        <inertial pos="-0.014554 -0.039773 -0.051175" quat="0.965049 -0.245902 0.0774212 -0.0471021" mass="2.634" diaginertia="0.00201801 0.0014948 0.000807932" />
+        <joint name="ref_right_hip_pitch_joint" axis="0 0.906308 0.422619" range="-2.6 2.6" />
+        <geom class="visual" material="ice" mesh="left_hip_pitch_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+        <geom class="collision" type="cylinder" pos="-0.06 -0.06 -0.08" quat="0.707388 0 0.706825 0" size="0.06 0.025" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+        <body name="ref_right_hip_roll_link" pos="0.019165 -0.058655 -0.083623">
+          <inertial pos="0.0074434 -2.3963e-05 -0.070083" quat="0.699455 0.704896 -0.0825397 0.0840927" mass="1.896" diaginertia="0.000595008 0.000509235 0.000471627" />
+          <joint name="ref_right_hip_roll_joint" axis="-1 0 0" range="-0.8 2" />
+          <geom class="visual" material="ice" mesh="left_hip_roll_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+          <geom class="collision" type="cylinder" pos="0.02 0 0" quat="0.707388 0 0.706825 0" size="0.06 0.01" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+          <body name="ref_right_hip_yaw_link" pos="-0.017415 -0.0036252 -0.14039">
+            <inertial pos="5.0405e-05 0.003536 -0.17718" quat="0.706847 0.000100203 0.000157186 0.707366" mass="2.865" diaginertia="0.0070209 0.0068188 0.000931829" />
+            <joint name="ref_right_hip_yaw_joint" axis="0 0 1" range="-2.6 2.6" />
+            <geom class="visual" material="ice" mesh="left_hip_yaw_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+            <geom class="collision" type="cylinder" pos="0 0 -0.15" size="0.055 0.11" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+            <body name="ref_right_knee_link" pos="0 -0.0365 -0.298">
+              <inertial pos="-0.01609 0.029412 -0.20201" quat="0.999949 0.000804618 0.00958423 -0.00317808" mass="2.161" diaginertia="0.011596 0.011377 0.000743545" />
+              <joint name="ref_right_knee_joint" axis="0 1 0" range="-0.2 1.8" />
+              <geom class="visual" material="ice" mesh="left_knee_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+              <geom class="collision" type="box" pos="0 0.028 -0.19" size="0.045 0.032 0.08" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+              <geom name="ref_right_shank_collision" class="collision" type="capsule" fromto="0 0.018 -0.11 0 0.018 -0.36" size="0.03" rgba="0.8 0.5 0.2 0.35" contype="0" conaffinity="0" />
+
+              <body name="ref_right_ankle_pitch_link" pos="-0.013 0.030625 -0.44831">
+                <inertial pos="0 0 0" quat="0.504216 0.504216 -0.495749 0.495749" mass="0.007" diaginertia="1.18541e-06 7.84935e-07 5.3402e-07" />
+                <joint name="ref_right_ankle_pitch_joint" axis="0 1 0" range="-0.5 1" />
+                <geom class="visual" material="white" mesh="left_ankle_pitch_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+                <body name="ref_right_ankle_roll_link" pos="-0.0023336 0 3.9519e-05">
+                  <inertial pos="0.0084316 0.00010541 -0.0362" quat="-0.00103283 0.718201 -0.0010349 0.695834" mass="0.72" diaginertia="0.00263717 0.0023595 0.000370292" />
+                  <joint name="ref_right_ankle_roll_joint" axis="1 0 0" range="-0.4 0.4" />
+                  <geom class="visual" material="dark" mesh="left_ankle_roll_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+                  <geom name="ref_right_foot_fore_collision" class="foot_collision" type="box" pos="0.072 0 -0.048" size="0.06 0.045 0.008" rgba="0.2 0.8 0.2 0.35" contype="0" conaffinity="0" />
+                  <geom name="ref_right_foot_rear_collision" class="foot_collision" type="box" pos="-0.078 0 -0.0458" size="0.022 0.034 0.008" rgba="0.2 0.8 0.2 0.35" contype="0" conaffinity="0" />
+                  <geom name="ref_right_foot_heel_collision" class="foot_collision" type="box" pos="-0.045 0 -0.042" size="0.03 0.038 0.006" rgba="0.2 0.8 0.2 0.35" contype="0" conaffinity="0" />
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <body name="ref_left_hip_pitch_link" pos="0.00049158 0.095534 0.065158">
+        <inertial pos="-0.014554 0.052688 -0.057198" quat="0.965048 0.245905 0.0774219 0.0471014" mass="2.634" diaginertia="0.00201801 0.0014948 0.00080794" />
+        <joint name="ref_left_hip_pitch_joint" axis="0 0.906308 -0.422619" range="-2.6 2.6" />
+        <geom class="visual" material="silver" mesh="right_hip_pitch_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+        <geom class="collision" type="cylinder" pos="-0.06 0.07 -0.09" quat="0.707388 0 0.706825 0" size="0.06 0.025" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+        <body name="ref_left_hip_roll_link" pos="0.0030702 0.07157 -0.089646">
+          <inertial pos="0.023539 2.3928e-05 -0.070083" quat="0.704894 0.699457 -0.0840917 0.0825408" mass="1.896" diaginertia="0.000595008 0.000509235 0.000471627" />
+          <joint name="ref_left_hip_roll_joint" axis="1 0 0" range="-0.8 2" />
+          <geom class="visual" material="ice" mesh="right_hip_roll_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+          <geom class="collision" type="cylinder" pos="0.04 0 0" quat="0.707388 0 0.706825 0" size="0.06 0.01" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+          <body name="ref_left_hip_yaw_link" pos="-0.0013202 0.0036252 -0.14039">
+            <inertial pos="5.0461e-05 -0.003536 -0.17717" quat="0.707365 0.000157066 0.000100226 0.706849" mass="2.865" diaginertia="0.0070209 0.0068188 0.000931829" />
+            <joint name="ref_left_hip_yaw_joint" axis="0 0 -1" range="-2.6 2.6" />
+            <geom class="visual" material="ice" mesh="right_hip_yaw_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+            <geom class="collision" type="cylinder" pos="0 0 -0.15" size="0.055 0.11" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+            <body name="ref_left_knee_link" pos="0 0.035647 -0.29631">
+              <inertial pos="-0.01609 -0.028559 -0.2037" quat="0.999949 -0.000804527 0.00958423 0.00317776" mass="2.161" diaginertia="0.011596 0.011377 0.000743545" />
+              <joint name="ref_left_knee_joint" axis="0 1 0" range="-0.2 1.8" />
+              <geom class="visual" material="ice" mesh="right_knee_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+              <geom class="collision" type="box" pos="0 -0.028 -0.19" size="0.045 0.032 0.08" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+              <geom name="ref_left_shank_collision" class="collision" type="capsule" fromto="0 -0.018 -0.11 0 -0.018 -0.36" size="0.03" rgba="0.8 0.5 0.2 0.35" contype="0" conaffinity="0" />
+
+              <body name="ref_left_ankle_pitch_link" pos="-0.013 -0.029772 -0.45">
+                <inertial pos="0 0 0" quat="0.504216 0.504216 -0.495749 0.495749" mass="0.007" diaginertia="1.18541e-06 7.84935e-07 5.3402e-07" />
+                <joint name="ref_left_ankle_pitch_joint" axis="0 1 0" range="-0.5 1" />
+                <geom class="visual" material="white" mesh="right_ankle_pitch_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+
+                <body name="ref_left_ankle_roll_link">
+                  <inertial pos="0.006098 -0.00010547 -0.03616" quat="0.00103287 0.718201 0.00103542 0.695834" mass="0.72" diaginertia="0.00263717 0.0023595 0.000370292" />
+                  <joint name="ref_left_ankle_roll_joint" axis="-1 0 0" range="-0.4 0.4" />
+                  <geom class="visual" material="dark" mesh="right_ankle_roll_link" contype="0" conaffinity="0" rgba="0.6 0.8 1.0 0.35" />
+                  <geom name="ref_left_foot_fore_collision" class="foot_collision" type="box" pos="0.072 0 -0.048" size="0.06 0.045 0.008" rgba="0.2 0.8 0.2 0.35" contype="0" conaffinity="0" />
+                  <geom name="ref_left_foot_rear_collision" class="foot_collision" type="box" pos="-0.078 0 -0.0458" size="0.022 0.034 0.008" rgba="0.2 0.8 0.2 0.35" contype="0" conaffinity="0" />
+                  <geom name="ref_left_foot_heel_collision" class="foot_collision" type="box" pos="-0.045 0 -0.042" size="0.03 0.038 0.006" rgba="0.2 0.8 0.2 0.35" contype="0" conaffinity="0" />
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

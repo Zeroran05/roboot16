@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import copy
 import time
-import tempfile
 import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from pathlib import Path
@@ -178,26 +177,27 @@ def _create_reference_side_by_side_xml(
     _set_duplicate_visual_only(duplicate, visual_alpha)
     worldbody.append(duplicate)
 
-    tmp = tempfile.NamedTemporaryFile(
-        prefix="roboot16_mimic_ref_",
-        suffix=".xml",
-        dir=str(xml_path.parent),
-        delete=False,
-    )
-    tmp_path = Path(tmp.name)
-    tmp.close()
-    tree.write(tmp_path, encoding="utf-8", xml_declaration=False)
+    output_path = xml_path.with_name(f"{xml_path.stem}_reference_side_by_side.xml")
+    tree.write(output_path, encoding="utf-8", xml_declaration=False)
 
-    return tmp_path, f"{name_prefix}base_link"
+    return output_path, f"{name_prefix}base_link"
 
 
 def _resolve_motion_body_indexes(
     model: mujoco.MjModel,
     motion: dict,
     body_names: Sequence[str],
+    duplicate_prefix: str = "ref_",
 ) -> list[int]:
     motion_body_count = int(motion["body_pos_w"].shape[1])
-    model_body_names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, bid) for bid in range(1, model.nbody)]
+    model_body_names = []
+    for bid in range(1, model.nbody):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, bid)
+        if name is None:
+            continue
+        if duplicate_prefix and name.startswith(duplicate_prefix):
+            continue
+        model_body_names.append(name)
     name_to_motion_index = {name: idx for idx, name in enumerate(model_body_names) if name is not None}
 
     if motion_body_count != len(model_body_names):
@@ -458,6 +458,54 @@ def _draw_reference_frames(
         )
 
 
+def _apply_reference_pose_to_robot(
+    data: mujoco.MjData,
+    model: mujoco.MjModel,
+    qpos_adrs: Sequence[int],
+    dof_adrs: Sequence[int],
+    anchor_body_index: int,
+    ref_joint_pos: np.ndarray,
+    ref_joint_vel: np.ndarray,
+    ref_body_pos_w: np.ndarray,
+    ref_body_quat_w: np.ndarray,
+    ref_body_lin_vel_w: np.ndarray,
+    ref_body_ang_vel_w: np.ndarray,
+) -> None:
+    data.qpos[qpos_adrs] = ref_joint_pos
+    data.qvel[dof_adrs] = ref_joint_vel
+    if model.njnt > 0 and model.jnt_type[0] == mujoco.mjtJoint.mjJNT_FREE:
+        root_qadr = model.jnt_qposadr[0]
+        data.qpos[root_qadr : root_qadr + 3] = ref_body_pos_w[anchor_body_index]
+        data.qpos[root_qadr + 3 : root_qadr + 7] = ref_body_quat_w[anchor_body_index]
+        data.qvel[0:3] = ref_body_lin_vel_w[anchor_body_index]
+        data.qvel[3:6] = ref_body_ang_vel_w[anchor_body_index]
+
+
+def _apply_reference_pose_to_duplicate_robot(
+    data: mujoco.MjData,
+    model: mujoco.MjModel,
+    qpos_adrs: Sequence[int],
+    dof_adrs: Sequence[int],
+    root_qadr: int,
+    root_vadr: int,
+    anchor_body_index: int,
+    offset_y: float,
+    ref_joint_pos: np.ndarray,
+    ref_joint_vel: np.ndarray,
+    ref_body_pos_w: np.ndarray,
+    ref_body_quat_w: np.ndarray,
+    ref_body_lin_vel_w: np.ndarray,
+    ref_body_ang_vel_w: np.ndarray,
+) -> None:
+    data.qpos[qpos_adrs] = ref_joint_pos
+    data.qvel[dof_adrs] = ref_joint_vel
+    data.qpos[root_qadr : root_qadr + 3] = ref_body_pos_w[anchor_body_index]
+    data.qpos[root_qadr + 1] += offset_y
+    data.qpos[root_qadr + 3 : root_qadr + 7] = ref_body_quat_w[anchor_body_index]
+    data.qvel[root_vadr : root_vadr + 3] = ref_body_lin_vel_w[anchor_body_index]
+    data.qvel[root_vadr + 3 : root_vadr + 6] = ref_body_ang_vel_w[anchor_body_index]
+
+
 def _joint_name_to_ids(model: mujoco.MjModel) -> dict[str, tuple[int, int, int]]:
     """Map joint name -> (joint_id, qpos_adr, dof_adr)."""
     mapping: dict[str, tuple[int, int, int]] = {}
@@ -678,6 +726,7 @@ def main() -> None:
     ref_robot_qpos_adrs: list[int] | None = None
     ref_robot_dof_adrs: list[int] | None = None
     ref_robot_root_qadr: int | None = None
+    ref_robot_root_vadr: int | None = None
     if args.show_reference_robot:
         prefixed_joint_names = [f"ref_{name}" for name in joint_names]
         ref_robot_qpos_adrs, ref_robot_dof_adrs = _resolve_joint_state_addresses(model, prefixed_joint_names)
@@ -688,6 +737,7 @@ def main() -> None:
         if ref_robot_root_joint_id < 0:
             raise ValueError("Reference robot base body does not own a root joint.")
         ref_robot_root_qadr = model.jnt_qposadr[ref_robot_root_joint_id]
+        ref_robot_root_vadr = model.jnt_dofadr[ref_robot_root_joint_id]
 
     last_action = np.zeros(len(joint_names), dtype=np.float32)
     raw_action = np.zeros(len(joint_names), dtype=np.float32)
@@ -705,25 +755,42 @@ def main() -> None:
         init_ref_body_ang_vel_w,
     ) = _reference_frame_from_motion(motion, initial_time_step)
 
-    # Mimic training resets the robot close to the sampled reference frame.
-    data.qpos[qpos_adrs] = init_ref_joint_pos
-    data.qvel[dof_adrs] = init_ref_joint_vel
-    if model.njnt > 0 and model.jnt_type[0] == mujoco.mjtJoint.mjJNT_FREE:
-        root_qadr = model.jnt_qposadr[0]
-        data.qpos[root_qadr : root_qadr + 3] = init_ref_body_pos_w[anchor_body_index]
-        data.qpos[root_qadr + 3 : root_qadr + 7] = init_ref_body_quat_w[anchor_body_index]
-        data.qvel[0:3] = init_ref_body_lin_vel_w[anchor_body_index]
-        data.qvel[3:6] = init_ref_body_ang_vel_w[anchor_body_index]
+    _apply_reference_pose_to_robot(
+        data,
+        model,
+        qpos_adrs,
+        dof_adrs,
+        anchor_body_index,
+        init_ref_joint_pos,
+        init_ref_joint_vel,
+        init_ref_body_pos_w,
+        init_ref_body_quat_w,
+        init_ref_body_lin_vel_w,
+        init_ref_body_ang_vel_w,
+    )
     if args.show_reference_robot:
-        assert ref_robot_qpos_adrs is not None and ref_robot_dof_adrs is not None and ref_robot_root_qadr is not None
-        data.qpos[ref_robot_qpos_adrs] = init_ref_joint_pos
-        data.qvel[ref_robot_dof_adrs] = init_ref_joint_vel
-        data.qpos[ref_robot_root_qadr : ref_robot_root_qadr + 3] = init_ref_body_pos_w[anchor_body_index]
-        data.qpos[ref_robot_root_qadr + 1] += args.reference_robot_offset_y
-        data.qpos[ref_robot_root_qadr + 3 : ref_robot_root_qadr + 7] = init_ref_body_quat_w[anchor_body_index]
-        ref_root_vadr = model.jnt_dofadr[model.body_jntadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, reference_robot_base_name)]]
-        data.qvel[ref_root_vadr : ref_root_vadr + 3] = init_ref_body_lin_vel_w[anchor_body_index]
-        data.qvel[ref_root_vadr + 3 : ref_root_vadr + 6] = init_ref_body_ang_vel_w[anchor_body_index]
+        assert (
+            ref_robot_qpos_adrs is not None
+            and ref_robot_dof_adrs is not None
+            and ref_robot_root_qadr is not None
+            and ref_robot_root_vadr is not None
+        )
+        _apply_reference_pose_to_duplicate_robot(
+            data,
+            model,
+            ref_robot_qpos_adrs,
+            ref_robot_dof_adrs,
+            ref_robot_root_qadr,
+            ref_robot_root_vadr,
+            anchor_body_index,
+            args.reference_robot_offset_y,
+            init_ref_joint_pos,
+            init_ref_joint_vel,
+            init_ref_body_pos_w,
+            init_ref_body_quat_w,
+            init_ref_body_lin_vel_w,
+            init_ref_body_ang_vel_w,
+        )
     mujoco.mj_forward(model, data)
     init_robot_anchor_pos_w, init_robot_anchor_quat_w = _get_body_pose(data, robot_anchor_body_id)
     init_ref_anchor_pos_w = init_ref_body_pos_w[anchor_body_index].astype(np.float32, copy=True)
@@ -746,6 +813,59 @@ def main() -> None:
         if args.loop_motion and args.motion_frames is not None and args.motion_frames > 0:
             time_step = args.time_step_start + (policy_index % args.motion_frames)
         return time_step
+
+    def reset_rollout() -> None:
+        nonlocal step_count, policy_step_count, last_action, raw_action, target_dof_pos
+        step_count = 0
+        policy_step_count = 0
+        last_action = np.zeros(len(joint_names), dtype=np.float32)
+        raw_action = np.zeros(len(joint_names), dtype=np.float32)
+        target_dof_pos = default_joint_pos.copy()
+        (
+            ref_joint_pos,
+            ref_joint_vel,
+            ref_body_pos_w,
+            ref_body_quat_w,
+            ref_body_lin_vel_w,
+            ref_body_ang_vel_w,
+        ) = _reference_frame_from_motion(motion, args.time_step_start)
+        _apply_reference_pose_to_robot(
+            data,
+            model,
+            qpos_adrs,
+            dof_adrs,
+            anchor_body_index,
+            ref_joint_pos,
+            ref_joint_vel,
+            ref_body_pos_w,
+            ref_body_quat_w,
+            ref_body_lin_vel_w,
+            ref_body_ang_vel_w,
+        )
+        if args.show_reference_robot:
+            assert (
+                ref_robot_qpos_adrs is not None
+                and ref_robot_dof_adrs is not None
+                and ref_robot_root_qadr is not None
+                and ref_robot_root_vadr is not None
+            )
+            _apply_reference_pose_to_duplicate_robot(
+                data,
+                model,
+                ref_robot_qpos_adrs,
+                ref_robot_dof_adrs,
+                ref_robot_root_qadr,
+                ref_robot_root_vadr,
+                anchor_body_index,
+                args.reference_robot_offset_y,
+                ref_joint_pos,
+                ref_joint_vel,
+                ref_body_pos_w,
+                ref_body_quat_w,
+                ref_body_lin_vel_w,
+                ref_body_ang_vel_w,
+            )
+        mujoco.mj_forward(model, data)
 
     def one_step() -> None:
         nonlocal step_count, policy_step_count, last_action, raw_action, target_dof_pos
@@ -860,7 +980,22 @@ def main() -> None:
         print(f"Finished headless mimic rollout. base_pos={data.qpos[0:3].tolist()}")
         return
 
-    with mujoco.viewer.launch_passive(model, data) as viewer:
+    interaction = {"paused": False, "step_once": False, "reset_requested": False}
+
+    def _key_callback(keycode: int) -> None:
+        if keycode == 32:  # Space
+            interaction["paused"] = not interaction["paused"]
+            interaction["step_once"] = False
+            print(f"[viewer] paused={interaction['paused']}")
+        elif keycode in (78, 110):  # N / n
+            interaction["step_once"] = True
+            interaction["paused"] = True
+            print("[viewer] single-step requested")
+        elif keycode in (82, 114):  # R / r
+            interaction["reset_requested"] = True
+            print("[viewer] reset requested")
+
+    with mujoco.viewer.launch_passive(model, data, key_callback=_key_callback) as viewer:
         if args.camera_follow:
             viewer.cam.distance = args.camera_distance
             viewer.cam.azimuth = args.camera_azimuth
@@ -870,7 +1005,14 @@ def main() -> None:
         start_t = time.time()
         while viewer.is_running() and (args.seconds is None or time.time() - start_t < args.seconds):
             step_start = time.time()
-            one_step()
+            if interaction["reset_requested"]:
+                reset_rollout()
+                interaction["reset_requested"] = False
+
+            should_step = (not interaction["paused"]) or interaction["step_once"]
+            if should_step:
+                one_step()
+                interaction["step_once"] = False
             if args.camera_follow:
                 _update_camera_follow(viewer, data, args.camera_lookat_height)
             if args.show_reference_frames:

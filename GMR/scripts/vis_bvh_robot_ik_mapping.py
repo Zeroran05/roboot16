@@ -52,16 +52,25 @@ def build_robot_dof_vector(robot_name: str, joints_dict: dict[str, float]) -> np
     return dof_pos
 
 
-def scale_human_data(human_data: dict, human_root_name: str, human_scale_table: dict) -> dict:
+def scale_human_data(
+    human_data: dict, human_root_name: str, human_scale_table: dict, include_all_joints: bool = False
+) -> dict:
     root_pos, root_quat = human_data[human_root_name]
     scaled_root_pos = float(human_scale_table[human_root_name]) * np.asarray(root_pos, dtype=np.float64)
+    default_scale = float(human_scale_table[human_root_name])
     human_data_local = {}
     for body_name, (pos, rot) in human_data.items():
-        if body_name == human_root_name or body_name not in human_scale_table:
+        if body_name == human_root_name:
+            continue
+        if body_name in human_scale_table:
+            scale = float(human_scale_table[body_name])
+        elif include_all_joints:
+            scale = default_scale
+        else:
             continue
         human_data_local[body_name] = (
             np.asarray(pos, dtype=np.float64) - np.asarray(root_pos, dtype=np.float64)
-        ) * float(human_scale_table[body_name])
+        ) * scale
 
     human_data_global = {
         human_root_name: (
@@ -156,7 +165,12 @@ def main() -> None:
         key: float(value) * ratio for key, value in ik_cfg["human_scale_table"].items()
     }
     human_root_name = ik_cfg["human_root_name"]
-    scaled_human_data = scale_human_data(human_frame, human_root_name, human_scale_table)
+    scaled_human_data = scale_human_data(
+        human_frame,
+        human_root_name,
+        human_scale_table,
+        include_all_joints=args.show_all_human,
+    )
 
     robot_root_pos_init, robot_root_rot_init, robot_joints_init = load_robot_init(args.robot_qpos_init)
     robot_dof_pos = build_robot_dof_vector(args.robot, robot_joints_init)

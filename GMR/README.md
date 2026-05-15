@@ -92,6 +92,22 @@ mjpython scripts/bvh_to_robot.py \
 
 
 ```
+带地面约束的重定向：
+```bash
+mjpython scripts/bvh_to_robot_grounded.py \
+  --bvh_file lafan1/walk1_subject1.bvh \
+  --format lafan1 \
+  --robot roboot16 \
+  --motion_fps 30 \
+  --headless \
+  --ground_mode support \
+  --contact_source human \
+  --support_height_mode mean \
+  --sequence_ground_window 11 \
+  --sequence_ground_max_step_down 0.006 \
+  --save_path retargeting_data/roboot16/walk1_subject1_grounded.pkl
+```
+
 mjpython scripts/bvh_to_robot.py \
   --bvh_file lafan1/run1_subject2.bvh \
   --format lafan1 \
@@ -100,7 +116,7 @@ mjpython scripts/bvh_to_robot.py \
 
 mjpython scripts/vis_robot_motion.py \
   --robot roboot16 \
-  --robot_motion_path retargeting_data/roboot16/run2_subject1.pkl
+  --robot_motion_path retargeting_data/roboot16/walk1_subject1_grounded.pkl
 
 mjpython scripts/vis_robot_motion.py \
   --robot roboot16 \
@@ -126,7 +142,7 @@ mjpython scripts/bvh_to_robot.py \
 
 mjpython scripts/vis_robot_motion.py \
   --robot unitree_g1 \
-  --robot_motion_path retargeting_data/unitree_g1/run1_subject2.pkl
+  --robot_motion_path retargeting_data/unitree_g1/walk1_subject1.pkl
 
 
 mjpython scripts/bvh_to_robot.py \
@@ -136,6 +152,13 @@ mjpython scripts/bvh_to_robot.py \
   --save_path retargeting_data/unitree_g1_auto/run1_subject2_auto.pkl
 
 
+mjpython roboot16/GMR/scripts/vis_bvh_robot_ik_mapping.py \
+  --bvh_file roboot16/GMR/lafan1/walk1_subject1.bvh \
+  --format lafan1 \
+  --robot roboot16 \
+  --ik_config roboot16/GMR/general_motion_retargeting/ik_configs/bvh_lafan1_to_roboot16.json \
+  --robot_qpos_init roboot16/GMR/ik_config_manager/pose_inits/roboot16_tpose.json \
+  --table ik_match_table1
 
 
   walk1_subject1:

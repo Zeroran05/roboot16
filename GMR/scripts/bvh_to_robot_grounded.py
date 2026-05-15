@@ -127,6 +127,17 @@ def _export_motion(args, qpos_list, qvel_list, frame_dt_list, aligned_fps):
             "ground_clearance": float(args.ground_clearance),
             "foot_bodies": _parse_csv_names(args.foot_bodies),
             "foot_geom_groups": _parse_csv_ints(args.foot_geom_groups),
+            "ground_mode": args.ground_mode,
+            "contact_source": args.contact_source,
+            "support_height_mode": args.support_height_mode,
+            "calibrated_sole": not args.disable_calibrated_sole,
+            "foot_flattening": not args.disable_foot_flattening,
+            "sequence_foot_flattening": not args.disable_sequence_foot_flattening,
+            "sequence_ground_smoothing": not args.disable_sequence_ground_smoothing,
+            "sequence_ground_window": int(args.sequence_ground_window),
+            "sequence_ground_passes": int(args.sequence_ground_passes),
+            "sequence_ground_max_step_down": float(args.sequence_ground_max_step_down),
+            "sequence_ground_max_step_up": float(args.sequence_ground_max_step_up),
             "stance_lock": not args.disable_stance_lock,
         },
     }
@@ -170,6 +181,12 @@ def main():
     parser.add_argument("--ground_height", type=float, default=0.0)
     parser.add_argument("--ground_clearance", type=float, default=0.005)
     parser.add_argument(
+        "--ground_mode",
+        choices=["support", "prevent_penetration"],
+        default="support",
+        help="support also pulls detected stance feet toward the floor; prevent_penetration only lifts feet above it.",
+    )
+    parser.add_argument(
         "--foot_bodies",
         type=str,
         default="left_ankle_roll_link,right_ankle_roll_link",
@@ -182,6 +199,39 @@ def main():
         help="Comma-separated MuJoCo geom groups used as foot contact geometry. Use 'all' to include all geoms.",
     )
     parser.add_argument("--max_root_z_correction", type=float, default=0.25)
+    parser.add_argument("--max_root_z_step_down", type=float, default=0.025)
+    parser.add_argument("--max_root_z_step_up", type=float, default=0.08)
+    parser.add_argument("--root_z_pull_down_alpha", type=float, default=0.45)
+    parser.add_argument("--root_z_lift_alpha", type=float, default=1.0)
+    parser.add_argument(
+        "--contact_source",
+        choices=["human", "robot", "hybrid"],
+        default="hybrid",
+        help="Where stance-foot contact is inferred from. PHUMA-style grounding usually wants human or hybrid.",
+    )
+    parser.add_argument(
+        "--support_height_mode",
+        choices=["lowest", "mean", "highest"],
+        default="mean",
+        help="Foot height representative used by support grounding. mean uses fore/rear/heel groups when available.",
+    )
+    parser.add_argument("--human_contact_height_threshold", type=float, default=0.06)
+    parser.add_argument("--human_contact_speed_threshold", type=float, default=0.35)
+    parser.add_argument("--disable_calibrated_sole", action="store_true", default=False)
+    parser.add_argument("--disable_foot_flattening", action="store_true", default=False)
+    parser.add_argument("--foot_flatten_iterations", type=int, default=2)
+    parser.add_argument("--foot_flatten_step", type=float, default=0.035)
+    parser.add_argument("--foot_flatten_tracking_weight", type=float, default=0.08)
+    parser.add_argument("--disable_sequence_foot_flattening", action="store_true", default=False)
+    parser.add_argument("--sequence_foot_flatten_contact_pre_roll", type=int, default=8)
+    parser.add_argument("--sequence_foot_flatten_contact_post_roll", type=int, default=3)
+    parser.add_argument("--disable_sequence_ground_smoothing", action="store_true", default=False)
+    parser.add_argument("--sequence_ground_window", type=int, default=11)
+    parser.add_argument("--sequence_ground_passes", type=int, default=2)
+    parser.add_argument("--sequence_ground_max_step_down", type=float, default=0.006)
+    parser.add_argument("--sequence_ground_max_step_up", type=float, default=0.04)
+    parser.add_argument("--sequence_ground_contact_pre_roll", type=int, default=6)
+    parser.add_argument("--sequence_ground_contact_post_roll", type=int, default=2)
     parser.add_argument("--disable_stance_lock", action="store_true", default=False)
     parser.add_argument("--stance_height_threshold", type=float, default=0.04)
     parser.add_argument("--stance_speed_threshold", type=float, default=0.35)
@@ -219,7 +269,21 @@ def main():
         ground_clearance=args.ground_clearance,
         foot_bodies=_parse_csv_names(args.foot_bodies),
         foot_geom_groups=_parse_csv_ints(args.foot_geom_groups),
+        ground_mode=args.ground_mode,
         max_root_z_correction=args.max_root_z_correction,
+        max_root_z_step_down=args.max_root_z_step_down,
+        max_root_z_step_up=args.max_root_z_step_up,
+        root_z_pull_down_alpha=args.root_z_pull_down_alpha,
+        root_z_lift_alpha=args.root_z_lift_alpha,
+        contact_source=args.contact_source,
+        support_height_mode=args.support_height_mode,
+        use_calibrated_sole=not args.disable_calibrated_sole,
+        human_contact_height_threshold=args.human_contact_height_threshold,
+        human_contact_speed_threshold=args.human_contact_speed_threshold,
+        enable_foot_flattening=not args.disable_foot_flattening,
+        foot_flatten_iterations=args.foot_flatten_iterations,
+        foot_flatten_step=args.foot_flatten_step,
+        foot_flatten_tracking_weight=args.foot_flatten_tracking_weight,
         enable_stance_lock=not args.disable_stance_lock,
         stance_height_threshold=args.stance_height_threshold,
         stance_speed_threshold=args.stance_speed_threshold,
@@ -247,6 +311,7 @@ def main():
 
     qpos_list = []
     qvel_list = []
+    stance_feet_list = []
     frame_dt_list = [0.0]
     target_dt = 1.0 / float(aligned_fps)
     desired_dt = target_dt
@@ -292,6 +357,7 @@ def main():
 
             qpos_list.append(qpos)
             qvel_list.append(qvel)
+            stance_feet_list.append(set(retargeter.get_ground_report().get("stance_feet", [])))
             frame_dt_list.append(float(dt_this))
             pbar.update(1)
 
@@ -318,6 +384,44 @@ def main():
         time.sleep(0.05)
 
     print(f"[ground] stats: {retargeter.ground_stats}")
+    post_processed = False
+    if qpos_list and not args.disable_sequence_foot_flattening:
+        qpos_arr = retargeter.flatten_feet_sequence(
+            qpos_list,
+            stance_feet_seq=stance_feet_list,
+            contact_pre_roll=args.sequence_foot_flatten_contact_pre_roll,
+            contact_post_roll=args.sequence_foot_flatten_contact_post_roll,
+        )
+        qpos_list = [qpos.copy() for qpos in qpos_arr]
+        post_processed = True
+        print(
+            "[ground] applied sequence foot flattening: "
+            f"pre_roll={args.sequence_foot_flatten_contact_pre_roll}, "
+            f"post_roll={args.sequence_foot_flatten_contact_post_roll}"
+        )
+    if qpos_list and not args.disable_sequence_ground_smoothing:
+        qpos_arr = retargeter.smooth_root_z_sequence(
+            qpos_list,
+            stance_feet_seq=stance_feet_list,
+            window=args.sequence_ground_window,
+            passes=args.sequence_ground_passes,
+            max_step_down=args.sequence_ground_max_step_down,
+            max_step_up=args.sequence_ground_max_step_up,
+            contact_pre_roll=args.sequence_ground_contact_pre_roll,
+            contact_post_roll=args.sequence_ground_contact_post_roll,
+        )
+        qvel_arr = retargeter.recompute_qvel_sequence(qpos_arr, frame_dt_list)
+        qpos_list = [qpos.copy() for qpos in qpos_arr]
+        qvel_list = [qvel.copy() for qvel in qvel_arr]
+        post_processed = False
+        print(
+            "[ground] applied sequence root-z smoothing: "
+            f"window={args.sequence_ground_window}, passes={args.sequence_ground_passes}, "
+            f"max_step_down={args.sequence_ground_max_step_down}"
+        )
+    if post_processed:
+        qvel_arr = retargeter.recompute_qvel_sequence(qpos_list, frame_dt_list)
+        qvel_list = [qvel.copy() for qvel in qvel_arr]
     if args.save_path is not None:
         _export_motion(args, qpos_list, qvel_list, frame_dt_list, aligned_fps)
 

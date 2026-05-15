@@ -24,7 +24,7 @@ from roboot16_amp_project.tasks.manager_based.locomotion.velocity import mdp as 
 
 
 MIMIC_DATA_DIR = DATA_DIR / "mimic"
-DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1_short_50hz.npz")
+DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1_test_30s_50hz.npz")
 
 VELOCITY_RANGE = {
     "x": (-0.5, 0.5),

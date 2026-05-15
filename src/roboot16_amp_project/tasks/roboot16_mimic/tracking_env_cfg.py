@@ -187,7 +187,7 @@ class EventCfg:
 class RewardsCfg:
     motion_global_anchor_pos = RewTerm(
         func=mdp.motion_global_anchor_position_error_exp,
-        weight=0.5,
+        weight=0.5,# 0.5
         params={"command_name": "motion", "std": 0.3},
     )
     motion_global_anchor_ori = RewTerm(
@@ -197,7 +197,7 @@ class RewardsCfg:
     )
     motion_body_pos = RewTerm(
         func=mdp.motion_relative_body_position_error_exp,
-        weight=0.8,
+        weight=1.0,
         params={"command_name": "motion", "std": 0.3},
     )
     motion_body_ori = RewTerm(
@@ -215,32 +215,20 @@ class RewardsCfg:
         weight=1.0,
         params={"command_name": "motion", "std": 3.14},
     )
-    # reference_foot_phase_contact = RewTerm(
-    #     func=mdp.reference_foot_phase_contact_reward,
-    #     weight=0.5,
-    #     params={
-    #         "command_name": "motion",
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
-    #         "body_names": ["left_ankle_roll_link", "right_ankle_roll_link"],
-    #         "ground_height": 0.0,
-    #         "contact_force_threshold": 1.0,
-    #         "stance_height_threshold": 0.08,
-    #         "stance_height_sigma": 0.02,
-    #         "stance_speed_threshold": 0.25,
-    #         "stance_speed_sigma": 0.08,
-    #         "stance_vz_threshold": 0.20,
-    #         "stance_vz_sigma": 0.08,
-    #     },
-    # )
+    motion_joint_pos = RewTerm(
+        func=mdp.motion_joint_position_error_exp,
+        weight=0.2,
+        params={"command_name": "motion", "std": 0.5},
+    )
     feet_slide = RewTerm(
         func=locomotion_mdp.feet_slide,
-        weight=-0.5,
+        weight=-1.2,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names="(left|right)_ankle_roll_link"),
         },
     )
-    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-1e-1)
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-2e-1)
     joint_limit = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-10.0,
@@ -248,7 +236,7 @@ class RewardsCfg:
     )
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-0.2,
+        weight=-0.4,
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
@@ -274,7 +262,7 @@ class TerminationsCfg:
         func=mdp.bad_motion_body_pos_z_only,
         params={
             "command_name": "motion",
-            "threshold": 0.20,
+            "threshold": 0.25,
             "body_names": ["left_ankle_roll_link", "right_ankle_roll_link"],
         },
     )

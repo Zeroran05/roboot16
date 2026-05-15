@@ -233,3 +233,17 @@ cp /root/isaaclab/roboot16/logs/rsl_rl/roboot16_mimic_project/2026-05-13_19-17-4
   --output_fps 50 \
   --headless
 
+6. sim2sim:本地mujoco
+mjpython roboot16/deploy/deploy_mujoco/deploy_mujoco_roboot16_mimic.py \
+  --onnx roboot16/deploy/pre_train/roboot16_mimic/policy1.onnx \
+  --motion-npz /Users/zhuran/IsaacLab/roboot16/data/mimic/walk1_subject1_short_50hz.npz \
+  --model roboot16/assets/Roboot1.6/xml/scene_1.xml \
+  --simulation-dt 0.005 \
+  --control-decimation 4 \
+  --camera-follow \
+  --time-step-start 0 \
+  --show-reference-frames \
+  --show-reference-robot \
+  --reference-robot-offset-y 1.0 \
+  --reference-robot-alpha 0.35 
+

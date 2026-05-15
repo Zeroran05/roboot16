@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import time
+import tempfile
+import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -94,6 +97,98 @@ def _load_external_motion(npz_path: Path) -> dict:
     motion["fps"] = float(np.asarray(data["fps"]).reshape(-1)[0]) if "fps" in data else None
     motion["num_frames"] = int(motion["joint_pos"].shape[0])
     return motion
+
+
+def _prefix_subtree_names(element: ET.Element, prefix: str) -> None:
+    name = element.get("name")
+    if name:
+        element.set("name", prefix + name)
+
+    for attr in ("joint", "joint1", "joint2", "site", "site1", "site2", "tendon", "geom", "body", "objname"):
+        value = element.get(attr)
+        if value:
+            element.set(attr, prefix + value)
+
+    for child in list(element):
+        _prefix_subtree_names(child, prefix)
+
+
+def _set_duplicate_visual_only(element: ET.Element, alpha: float) -> None:
+    if element.tag == "geom":
+        element.set("contype", "0")
+        element.set("conaffinity", "0")
+        rgba = element.get("rgba")
+        if rgba:
+            parts = rgba.split()
+            if len(parts) == 4:
+                parts[3] = f"{alpha}"
+                element.set("rgba", " ".join(parts))
+        else:
+            element.set("rgba", f"0.6 0.8 1.0 {alpha}")
+    for child in list(element):
+        _set_duplicate_visual_only(child, alpha)
+
+
+def _create_reference_side_by_side_xml(
+    xml_path: Path,
+    side_offset_y: float,
+    name_prefix: str = "ref_",
+    visual_alpha: float = 0.35,
+) -> tuple[Path, str]:
+    def _find_base_body_in_tree(tree_root: ET.Element) -> ET.Element | None:
+        worldbody = tree_root.find("worldbody")
+        if worldbody is None:
+            return None
+        for child in worldbody.findall("body"):
+            if child.get("name") == "base_link":
+                return child
+        return None
+
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    worldbody = root.find("worldbody")
+    if worldbody is None:
+        raise ValueError(f"No <worldbody> found in XML: {xml_path}")
+
+    for include_elem in root.findall("include"):
+        include_file = include_elem.get("file")
+        if include_file:
+            include_path = (xml_path.parent / include_file).resolve()
+            include_elem.set("file", str(include_path))
+
+    base_body = _find_base_body_in_tree(root)
+    if base_body is None:
+        for include_elem in root.findall("include"):
+            include_file = include_elem.get("file")
+            if not include_file:
+                continue
+            include_path = (xml_path.parent / include_file).resolve()
+            if not include_path.is_file():
+                continue
+            include_root = ET.parse(include_path).getroot()
+            base_body = _find_base_body_in_tree(include_root)
+            if base_body is not None:
+                break
+    if base_body is None:
+        raise ValueError(f"Could not find base_link body in XML: {xml_path}")
+
+    duplicate = copy.deepcopy(base_body)
+    duplicate.set("pos", f"0 {side_offset_y} 1.0")
+    _prefix_subtree_names(duplicate, name_prefix)
+    _set_duplicate_visual_only(duplicate, visual_alpha)
+    worldbody.append(duplicate)
+
+    tmp = tempfile.NamedTemporaryFile(
+        prefix="roboot16_mimic_ref_",
+        suffix=".xml",
+        dir=str(xml_path.parent),
+        delete=False,
+    )
+    tmp_path = Path(tmp.name)
+    tmp.close()
+    tree.write(tmp_path, encoding="utf-8", xml_declaration=False)
+
+    return tmp_path, f"{name_prefix}base_link"
 
 
 def _resolve_motion_body_indexes(
@@ -297,6 +392,72 @@ def _update_camera_follow(viewer, data: mujoco.MjData, lookat_height: float) -> 
     )
 
 
+def _draw_frame_axes(
+    viewer,
+    pos_w: np.ndarray,
+    quat_wxyz: np.ndarray,
+    scale: float,
+    axis_width: float,
+    rgba_xyz: Sequence[Sequence[float]] | None = None,
+) -> None:
+    if rgba_xyz is None:
+        rgba_xyz = (
+            (1.0, 0.0, 0.0, 1.0),
+            (0.0, 1.0, 0.0, 1.0),
+            (0.0, 0.0, 1.0, 1.0),
+        )
+
+    rot = quat_wxyz_to_rotmat(quat_wxyz)
+    for axis_idx in range(3):
+        geom = viewer.user_scn.geoms[viewer.user_scn.ngeom]
+        mujoco.mjv_initGeom(
+            geom,
+            type=mujoco.mjtGeom.mjGEOM_ARROW,
+            size=np.array([0.01, 0.01, 0.01], dtype=np.float64),
+            pos=pos_w.astype(np.float64),
+            mat=rot.astype(np.float64).reshape(-1),
+            rgba=np.asarray(rgba_xyz[axis_idx], dtype=np.float32),
+        )
+        mujoco.mjv_connector(
+            viewer.user_scn.geoms[viewer.user_scn.ngeom],
+            type=mujoco.mjtGeom.mjGEOM_ARROW,
+            width=axis_width,
+            from_=pos_w.astype(np.float64),
+            to=(pos_w + scale * rot[:, axis_idx]).astype(np.float64),
+        )
+        viewer.user_scn.ngeom += 1
+
+
+def _draw_reference_frames(
+    viewer,
+    ref_body_pos_w: np.ndarray,
+    ref_body_quat_w: np.ndarray,
+    anchor_body_index: int,
+    scale_anchor: float,
+    scale_body: float,
+    axis_width_anchor: float,
+    axis_width_body: float,
+) -> None:
+    viewer.user_scn.ngeom = 0
+    _draw_frame_axes(
+        viewer,
+        ref_body_pos_w[anchor_body_index],
+        ref_body_quat_w[anchor_body_index],
+        scale=scale_anchor,
+        axis_width=axis_width_anchor,
+    )
+    for body_idx in range(ref_body_pos_w.shape[0]):
+        if body_idx == anchor_body_index:
+            continue
+        _draw_frame_axes(
+            viewer,
+            ref_body_pos_w[body_idx],
+            ref_body_quat_w[body_idx],
+            scale=scale_body,
+            axis_width=axis_width_body,
+        )
+
+
 def _joint_name_to_ids(model: mujoco.MjModel) -> dict[str, tuple[int, int, int]]:
     """Map joint name -> (joint_id, qpos_adr, dof_adr)."""
     mapping: dict[str, tuple[int, int, int]] = {}
@@ -306,6 +467,19 @@ def _joint_name_to_ids(model: mujoco.MjModel) -> dict[str, tuple[int, int, int]]
             continue
         mapping[name] = (jid, model.jnt_qposadr[jid], model.jnt_dofadr[jid])
     return mapping
+
+
+def _resolve_joint_state_addresses(model: mujoco.MjModel, joint_names: Sequence[str]) -> tuple[list[int], list[int]]:
+    joint_map = _joint_name_to_ids(model)
+    qpos_adrs: list[int] = []
+    dof_adrs: list[int] = []
+    for joint_name in joint_names:
+        if joint_name not in joint_map:
+            raise KeyError(f"Joint '{joint_name}' not found in MuJoCo model.")
+        _, qadr, dadr = joint_map[joint_name]
+        qpos_adrs.append(qadr)
+        dof_adrs.append(dadr)
+    return qpos_adrs, dof_adrs
 
 
 def _actuator_summary(model: mujoco.MjModel, joint_names: Sequence[str]) -> list[dict]:
@@ -390,6 +564,32 @@ def main() -> None:
     parser.add_argument("--no-viewer", action="store_true", help="Run headless.")
     parser.add_argument("--print-every", type=int, default=50, help="Print a short debug line every N policy steps.")
     parser.add_argument(
+        "--show-reference-frames",
+        action="store_true",
+        help="Visualize reference anchor and tracked body frames from the motion npz in the MuJoCo viewer.",
+    )
+    parser.add_argument("--reference-anchor-scale", type=float, default=0.20, help="Reference anchor axis length.")
+    parser.add_argument("--reference-body-scale", type=float, default=0.10, help="Reference body axis length.")
+    parser.add_argument("--reference-anchor-width", type=float, default=0.010, help="Reference anchor axis width.")
+    parser.add_argument("--reference-body-width", type=float, default=0.006, help="Reference body axis width.")
+    parser.add_argument(
+        "--show-reference-robot",
+        action="store_true",
+        help="Spawn a second passive robot beside the policy robot and replay the reference motion on it.",
+    )
+    parser.add_argument(
+        "--reference-robot-offset-y",
+        type=float,
+        default=1.0,
+        help="Lateral y offset for the side-by-side reference robot.",
+    )
+    parser.add_argument(
+        "--reference-robot-alpha",
+        type=float,
+        default=0.35,
+        help="Visual alpha for the side-by-side reference robot.",
+    )
+    parser.add_argument(
         "--default-joint-pos-override",
         type=str,
         default=None,
@@ -414,7 +614,17 @@ def main() -> None:
     if len(spec["observation_names"]) == 0:
         raise ValueError("The ONNX metadata did not contain any observation names.")
 
-    model = mujoco.MjModel.from_xml_path(str(args.model))
+    model_xml_path = args.model
+    reference_robot_base_name = None
+    if args.show_reference_robot:
+        model_xml_path, reference_robot_base_name = _create_reference_side_by_side_xml(
+            args.model,
+            side_offset_y=args.reference_robot_offset_y,
+            visual_alpha=args.reference_robot_alpha,
+        )
+        print(f"[reference] Using temporary side-by-side XML: {model_xml_path}")
+
+    model = mujoco.MjModel.from_xml_path(str(model_xml_path))
     data = mujoco.MjData(model)
     model.opt.timestep = args.simulation_dt
 
@@ -465,6 +675,20 @@ def main() -> None:
     if robot_anchor_body_id < 0:
         raise KeyError(f"Anchor body '{anchor_body_name}' not found in MuJoCo model.")
 
+    ref_robot_qpos_adrs: list[int] | None = None
+    ref_robot_dof_adrs: list[int] | None = None
+    ref_robot_root_qadr: int | None = None
+    if args.show_reference_robot:
+        prefixed_joint_names = [f"ref_{name}" for name in joint_names]
+        ref_robot_qpos_adrs, ref_robot_dof_adrs = _resolve_joint_state_addresses(model, prefixed_joint_names)
+        ref_robot_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, reference_robot_base_name)
+        if ref_robot_body_id < 0:
+            raise KeyError(f"Reference robot base body '{reference_robot_base_name}' not found in MuJoCo model.")
+        ref_robot_root_joint_id = model.body_jntadr[ref_robot_body_id]
+        if ref_robot_root_joint_id < 0:
+            raise ValueError("Reference robot base body does not own a root joint.")
+        ref_robot_root_qadr = model.jnt_qposadr[ref_robot_root_joint_id]
+
     last_action = np.zeros(len(joint_names), dtype=np.float32)
     raw_action = np.zeros(len(joint_names), dtype=np.float32)
     target_dof_pos = default_joint_pos.copy()
@@ -490,6 +714,16 @@ def main() -> None:
         data.qpos[root_qadr + 3 : root_qadr + 7] = init_ref_body_quat_w[anchor_body_index]
         data.qvel[0:3] = init_ref_body_lin_vel_w[anchor_body_index]
         data.qvel[3:6] = init_ref_body_ang_vel_w[anchor_body_index]
+    if args.show_reference_robot:
+        assert ref_robot_qpos_adrs is not None and ref_robot_dof_adrs is not None and ref_robot_root_qadr is not None
+        data.qpos[ref_robot_qpos_adrs] = init_ref_joint_pos
+        data.qvel[ref_robot_dof_adrs] = init_ref_joint_vel
+        data.qpos[ref_robot_root_qadr : ref_robot_root_qadr + 3] = init_ref_body_pos_w[anchor_body_index]
+        data.qpos[ref_robot_root_qadr + 1] += args.reference_robot_offset_y
+        data.qpos[ref_robot_root_qadr + 3 : ref_robot_root_qadr + 7] = init_ref_body_quat_w[anchor_body_index]
+        ref_root_vadr = model.jnt_dofadr[model.body_jntadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, reference_robot_base_name)]]
+        data.qvel[ref_root_vadr : ref_root_vadr + 3] = init_ref_body_lin_vel_w[anchor_body_index]
+        data.qvel[ref_root_vadr + 3 : ref_root_vadr + 6] = init_ref_body_ang_vel_w[anchor_body_index]
     mujoco.mj_forward(model, data)
     init_robot_anchor_pos_w, init_robot_anchor_quat_w = _get_body_pose(data, robot_anchor_body_id)
     init_ref_anchor_pos_w = init_ref_body_pos_w[anchor_body_index].astype(np.float32, copy=True)
@@ -515,10 +749,11 @@ def main() -> None:
 
     def one_step() -> None:
         nonlocal step_count, policy_step_count, last_action, raw_action, target_dof_pos
+        current_ref_frame = None
 
         if step_count % args.control_decimation == 0:
             time_step = resolve_time_step(policy_step_count)
-            (
+            current_ref_frame = (
                 ref_joint_pos,
                 ref_joint_vel,
                 ref_body_pos_w,
@@ -564,6 +799,28 @@ def main() -> None:
         data.ctrl[act_ids] = target_dof_pos
 
         mujoco.mj_step(model, data)
+        if args.show_reference_robot:
+            if current_ref_frame is None:
+                current_ref_frame = _reference_frame_from_motion(motion, resolve_time_step(max(policy_step_count - 1, 0)))
+            (
+                ref_joint_pos,
+                ref_joint_vel,
+                ref_body_pos_w,
+                ref_body_quat_w,
+                ref_body_lin_vel_w,
+                ref_body_ang_vel_w,
+            ) = current_ref_frame
+            assert ref_robot_qpos_adrs is not None and ref_robot_dof_adrs is not None and ref_robot_root_qadr is not None
+            data.qpos[ref_robot_qpos_adrs] = ref_joint_pos
+            data.qvel[ref_robot_dof_adrs] = ref_joint_vel
+            data.qpos[ref_robot_root_qadr : ref_robot_root_qadr + 3] = ref_body_pos_w[anchor_body_index]
+            data.qpos[ref_robot_root_qadr + 1] += args.reference_robot_offset_y
+            data.qpos[ref_robot_root_qadr + 3 : ref_robot_root_qadr + 7] = ref_body_quat_w[anchor_body_index]
+            ref_root_joint_id = model.body_jntadr[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, reference_robot_base_name)]
+            ref_root_vadr = model.jnt_dofadr[ref_root_joint_id]
+            data.qvel[ref_root_vadr : ref_root_vadr + 3] = ref_body_lin_vel_w[anchor_body_index]
+            data.qvel[ref_root_vadr + 3 : ref_root_vadr + 6] = ref_body_ang_vel_w[anchor_body_index]
+            mujoco.mj_forward(model, data)
         step_count += 1
 
     print(f"Loaded ONNX: {args.onnx}")
@@ -616,6 +873,28 @@ def main() -> None:
             one_step()
             if args.camera_follow:
                 _update_camera_follow(viewer, data, args.camera_lookat_height)
+            if args.show_reference_frames:
+                current_time_step = resolve_time_step(max(policy_step_count - 1, 0))
+                (
+                    _ref_joint_pos,
+                    _ref_joint_vel,
+                    ref_body_pos_w,
+                    ref_body_quat_w,
+                    _ref_body_lin_vel_w,
+                    _ref_body_ang_vel_w,
+                ) = _reference_frame_from_motion(motion, current_time_step)
+                _draw_reference_frames(
+                    viewer,
+                    ref_body_pos_w,
+                    ref_body_quat_w,
+                    anchor_body_index=anchor_body_index,
+                    scale_anchor=args.reference_anchor_scale,
+                    scale_body=args.reference_body_scale,
+                    axis_width_anchor=args.reference_anchor_width,
+                    axis_width_body=args.reference_body_width,
+                )
+            else:
+                viewer.user_scn.ngeom = 0
             viewer.sync()
 
             time_until_next_step = model.opt.timestep - (time.time() - step_start)

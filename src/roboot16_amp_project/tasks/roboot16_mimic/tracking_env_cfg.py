@@ -24,7 +24,7 @@ from roboot16_amp_project.tasks.manager_based.locomotion.velocity import mdp as 
 
 
 MIMIC_DATA_DIR = DATA_DIR / "mimic"
-DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1_test_30s_50hz.npz")
+DEFAULT_MOTION_FILE = str(MIMIC_DATA_DIR / "walk1_subject1_test1_30s.npz")
 
 VELOCITY_RANGE = {
     "x": (-0.5, 0.5),
@@ -187,7 +187,7 @@ class EventCfg:
 class RewardsCfg:
     motion_global_anchor_pos = RewTerm(
         func=mdp.motion_global_anchor_position_error_exp,
-        weight=0.5,# 0.5
+        weight=0.7,# 0.5
         params={"command_name": "motion", "std": 0.3},
     )
     motion_global_anchor_ori = RewTerm(
@@ -222,7 +222,7 @@ class RewardsCfg:
     # )
     feet_slide = RewTerm(
         func=locomotion_mdp.feet_slide,
-        weight=-0.8,
+        weight=-0.5,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names="(left|right)_ankle_roll_link"),

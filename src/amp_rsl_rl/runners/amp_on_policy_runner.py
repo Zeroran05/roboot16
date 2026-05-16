@@ -454,7 +454,22 @@ class AMPOnPolicyRunner:
                 for _ in range(self.num_steps_per_env):
                     actions = self.alg.act(obs)
                     command_speed = self.base_env.command_manager.get_command("base_velocity")[:, 0].to(self.device)
-                    self.alg.act_amp(amp_obs, command_speed=command_speed)
+                    robot = self.base_env.scene["robot"]
+                    root_vel_yaw = quat_apply_inverse(
+                        yaw_quat(robot.data.root_quat_w),
+                        robot.data.root_lin_vel_w[:, :3],
+                    )
+                    root_speed = root_vel_yaw[:, 0].to(self.device)
+                    policy_condition_speed = (
+                        self.alg.expert_sampling_cmd_weight * command_speed
+                        + self.alg.expert_sampling_root_vel_weight * root_speed
+                    )
+                    policy_condition_speed = torch.clamp(
+                        policy_condition_speed,
+                        min=self.alg.expert_sampling_speed_min,
+                        max=self.alg.expert_sampling_speed_max,
+                    )
+                    self.alg.act_amp(amp_obs, command_speed=command_speed, root_speed=root_speed)
                     obs, rewards, dones, extras = self.env.step(
                         actions.to(self.env.device)
                     )
@@ -478,12 +493,12 @@ class AMPOnPolicyRunner:
                         next_amp_obs_with_term,
                         task_rewards,
                         self.amp_task_reward_lerp,
-                        condition=command_speed,
+                        condition=policy_condition_speed,
                     )
                     style_rewards = self.discriminator.predict_reward(
                         amp_obs,
                         next_amp_obs_with_term,
-                        condition=command_speed,
+                        condition=policy_condition_speed,
                     )
 
                     mean_task_reward_log += task_rewards.mean().item()
@@ -702,6 +717,21 @@ class AMPOnPolicyRunner:
                     locs["it"],
                 )
                 self.writer.add_scalar(
+                    "Train/debug_env0_root_speed",
+                    amp_debug_sample["policy_root_speed"],
+                    locs["it"],
+                )
+                self.writer.add_scalar(
+                    "Train/debug_env0_policy_condition_speed",
+                    amp_debug_sample["policy_condition_speed"],
+                    locs["it"],
+                )
+                self.writer.add_scalar(
+                    "Train/debug_env0_expert_sampling_speed",
+                    amp_debug_sample["expert_sampling_speed"],
+                    locs["it"],
+                )
+                self.writer.add_scalar(
                     "Train/debug_env0_expert_clip_speed",
                     amp_debug_sample["expert_clip_speed"],
                     locs["it"],
@@ -775,6 +805,9 @@ class AMPOnPolicyRunner:
             if amp_debug_sample is not None:
                 log_string += (
                     f"""{'AMP env0 cmd vx:':>{pad}} {amp_debug_sample['policy_command_speed']:.4f}\n"""
+                    f"""{'AMP env0 root vx:':>{pad}} {amp_debug_sample['policy_root_speed']:.4f}\n"""
+                    f"""{'AMP env0 cond vx:':>{pad}} {amp_debug_sample['policy_condition_speed']:.4f}\n"""
+                    f"""{'AMP env0 samp vx:':>{pad}} {amp_debug_sample['expert_sampling_speed']:.4f}\n"""
                     f"""{'AMP env0 clip:':>{pad}} {amp_debug_sample['expert_clip_name']}\n"""
                     f"""{'AMP env0 clip speed:':>{pad}} {amp_debug_sample['expert_clip_speed']:.4f}\n"""
                 )
@@ -806,6 +839,9 @@ class AMPOnPolicyRunner:
             if amp_debug_sample is not None:
                 log_string += (
                     f"""{'AMP env0 cmd vx:':>{pad}} {amp_debug_sample['policy_command_speed']:.4f}\n"""
+                    f"""{'AMP env0 root vx:':>{pad}} {amp_debug_sample['policy_root_speed']:.4f}\n"""
+                    f"""{'AMP env0 cond vx:':>{pad}} {amp_debug_sample['policy_condition_speed']:.4f}\n"""
+                    f"""{'AMP env0 samp vx:':>{pad}} {amp_debug_sample['expert_sampling_speed']:.4f}\n"""
                     f"""{'AMP env0 clip:':>{pad}} {amp_debug_sample['expert_clip_name']}\n"""
                     f"""{'AMP env0 clip speed:':>{pad}} {amp_debug_sample['expert_clip_speed']:.4f}\n"""
                 )

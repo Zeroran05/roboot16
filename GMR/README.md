@@ -102,7 +102,7 @@ mjpython scripts/bvh_to_robot.py \
 
 mjpython scripts/vis_robot_motion.py \
   --robot roboot16 \
-  --robot_motion_path retargeting_data/roboot16/pkl_classified/walk/walk6_1p9.pkl
+  --robot_motion_path retargeting_data/roboot16/walk1_subject1_test1.pkl
 
 mjpython scripts/vis_robot_motion.py \
   --robot roboot16 \

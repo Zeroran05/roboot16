@@ -67,108 +67,29 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=3.0,
+        weight=3.2,
         params={"command_name": "base_velocity", "std": 0.4},
     )
-    # forward_vel_x_error = RewTerm(
-    #     func=mdp.forward_vel_x_error_abs_yaw_frame,
-    #     weight=-0.5,
-    #     params={"command_name": "base_velocity"},
-    # )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
         weight=1.2,
         params={"command_name": "base_velocity", "std": 0.4},
     )
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time_positive_biped,
-        weight=0.8,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
-            "threshold": 0.4,
-        },
-    )
     stand_still = RewTerm(
         func=mdp.stand_still_joint_deviation_l1,
-        weight=-0.5,
+        weight=-0.8,
         params={
             "command_name": "base_velocity",
             "command_threshold": 0.01,
             "asset_cfg": SceneEntityCfg("robot"),
         },
     )
-    feet_mode_time_symmetry = RewTerm(
-        func=mdp.feet_mode_time_symmetry_penalty,
-        weight=-0.1,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
-            "command_threshold": 0.2,
-        },
-    )
-    feet_trajectory_symmetry = RewTerm(
-        func=mdp.feet_trajectory_symmetry_penalty,
-        weight=-0.1,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
-            "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
-            "command_threshold": 0.2,
-            "phase_sigma": 0.12,
-        },
-    )
     feet_slide = RewTerm(
         func=mdp.feet_slide,
-        weight=-0.2,
+        weight=-0.5,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names="(left|right)_ankle_roll_link"),
-        },
-    )
-    dof_pos_limits = RewTerm(
-        func=mdp.joint_pos_limits,
-        weight=-1.0,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names="(left|right)_ankle_.*")},
-    )
-    joint_deviation_hip_roll_yaw = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.18,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=["(left|right)_hip_roll_joint", "(left|right)_hip_yaw_joint"],
-            )
-        },
-    )
-    joint_deviation_ankle_roll = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.20,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["(left|right)_ankle_roll_joint"])},
-    )
-    feet_too_near = RewTerm(
-        func=feet_too_near_biped,
-        weight=-3.0,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
-            "threshold": 0.44,
-        },
-    )
-    knee_lateral_separation = RewTerm(
-        func=biped_leg_lateral_separation_penalty,
-        weight=-3.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=[
-                    "left_knee_link",
-                    "right_knee_link",
-                    "left_ankle_roll_link",
-                    "right_ankle_roll_link",
-                ],
-            ),
-            "min_knee_y_sep": 0.42,
-            "min_ankle_y_sep": 0.0,
         },
     )
     feet_stumble = RewTerm(
@@ -178,6 +99,86 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
         },
     )
+    dof_pos_limits = RewTerm(
+        func=mdp.joint_pos_limits,
+        weight=-1.0,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names="(left|right)_ankle_.*")},
+    )
+
+    # 步态相关任务奖励，注释掉以amp主导步态
+    # feet_air_time = RewTerm(
+    #     func=mdp.feet_air_time_positive_biped,
+    #     weight=0.8,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+    #         "threshold": 0.4,
+    #     },
+    # )
+
+    # feet_mode_time_symmetry = RewTerm(
+    #     func=mdp.feet_mode_time_symmetry_penalty,
+    #     weight=-0.1,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+    #         "command_threshold": 0.2,
+    #     },
+    # )
+    # feet_trajectory_symmetry = RewTerm(
+    #     func=mdp.feet_trajectory_symmetry_penalty,
+    #     weight=-0.1,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names="(left|right)_ankle_roll_link"),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
+    #         "command_threshold": 0.2,
+    #         "phase_sigma": 0.12,
+    #     },
+    # )
+
+
+    joint_deviation_hip_roll_yaw = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.15,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=["(left|right)_hip_roll_joint", "(left|right)_hip_yaw_joint"],
+            )
+        },
+    )
+    joint_deviation_ankle_roll = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-0.15,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["(left|right)_ankle_roll_joint"])},
+    )
+    # feet_too_near = RewTerm(
+    #     func=feet_too_near_biped,
+    #     weight=-3.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
+    #         "threshold": 0.44,
+    #     },
+    # )
+    # knee_lateral_separation = RewTerm(
+    #     func=biped_leg_lateral_separation_penalty,
+    #     weight=-3.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "left_knee_link",
+    #                 "right_knee_link",
+    #                 "left_ankle_roll_link",
+    #                 "right_ankle_roll_link",
+    #             ],
+    #         ),
+    #         "min_knee_y_sep": 0.42,
+    #         "min_ankle_y_sep": 0.0,
+    #     },
+    # )
+
     # 惩罚yaw向外翻转过度，奖励yaw向内翻转，正为内转（有助于高速行走时的步态）
     # outward_hip_yaw = RewTerm(
     #     func=outward_hip_yaw_penalty,
@@ -218,80 +219,14 @@ class Roboot16AmpHighSpeedCurriculumCfg:
             "schedule_name": "lin_vel_x",
             "schedule": [
                 (0, (0.3, 2.0)),
-                (36_000, (1.0, 2.8)),
-                (60_000, (1.5, 3.5)),
-                (84_000, (2.0, 4.0)),
-                # (84_000, (0.4, 3.6)),
-                # (96_000, (0.4, 4.0))
+                (36_000, (0.3, 2.5)),
+                (72_000, (0.9, 3.0)),
+                (108_000, (1.0, 3.5)),
+                (144_000, (1.5, 4.0))
+
             ],
         },
     )
-    # track_lin_vel_xy_weight = CurrTerm(
-    #     func=env_mdp.modify_term_cfg,
-    #     params={
-    #         "address": "rewards.track_lin_vel_xy_exp.weight",
-    #         "modify_fn": _modify_value_by_schedule,
-    #         "modify_params": {
-    #             "schedule_name": "track_lin_vel_xy_weight",
-    #             "schedule": [
-    #                 (0, 3.0),
-    #                 (16_800, 3.2),
-    #                 (28_800, 3.6),
-    #                 (40_800, 3.8),
-    #                 (52_800, 4.0),
-    #                 (64_800, 4.4),
-    #                 (72_800, 4.8)
-    #             ],
-    #         },
-    #     },
-    # )
-    # track_lin_vel_xy_std = CurrTerm(
-    #     func=env_mdp.modify_term_cfg,
-    #     params={
-    #         "address": "rewards.track_lin_vel_xy_exp.params.std",
-    #         "modify_fn": _modify_value_by_schedule,
-    #         "modify_params": {
-    #             "schedule_name": "track_lin_vel_xy_std",
-    #             "schedule": [
-    #                 (0, 0.4),
-    #                 (28_800, 0.4),
-    #                 (52_800, 0.5),
-    #                 (64_800, 0.5),
-    #                 (77_600, 0.6),
-    #                 (80_000, 0.55)
-    #             ],
-    #         },
-    #     },
-    # )
-    # track_ang_vel_z_weight = CurrTerm(
-    #     func=env_mdp.modify_term_cfg,
-    #     params={
-    #         "address": "rewards.track_ang_vel_z_exp.weight",
-    #         "modify_fn": _modify_value_by_schedule,
-    #         "modify_params": {
-    #             "schedule_name": "track_ang_vel_z_weight",
-    #             "schedule": [
-    #                 (0, 1.2)
-    #             ],
-    #         },
-    #     },
-    # )
-    # track_ang_vel_z_std = CurrTerm(
-    #     func=env_mdp.modify_term_cfg,
-    #     params={
-    #         "address": "rewards.track_ang_vel_z_exp.params.std",
-    #         "modify_fn": _modify_value_by_schedule,
-    #         "modify_params": {
-    #             "schedule_name": "track_ang_vel_z_std",
-    #             "schedule": [
-    #                 (0, 0.5),
-    #                 (16_800, 0.47),
-    #                 (28_800, 0.44),
-    #                 (40_800, 0.40),
-    #             ],
-    #         },
-    #     },
-    # )
 
 
 @configclass
@@ -355,10 +290,10 @@ class Roboot16AmpHighSpeedEnvCfg(Roboot16AmpFlatEnvCfg):
 
         # These are the task-local initial command settings. The curriculum above
         # will progressively overwrite the tracked fields during training.
-        self.commands.base_velocity.rel_standing_envs = 0.1
+        self.commands.base_velocity.rel_standing_envs = 0.08
         self.commands.base_velocity.rel_heading_envs = 0.0
         self.commands.base_velocity.heading_command = False
-        self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.3, 2.0)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
         if hasattr(self.commands.base_velocity.ranges, "heading"):

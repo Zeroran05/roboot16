@@ -64,6 +64,19 @@ def get_robot_dof_names(robot_name):
     return dof_names
 
 
+def safe_key_char(keycode):
+    try:
+        return chr(keycode)
+    except (OverflowError, ValueError):
+        return ""
+
+
+def clamp_frame_index(idx, total_frames):
+    if total_frames <= 0:
+        return 0
+    return max(0, min(idx, total_frames - 1))
+
+
 def check_exported_root_velocities(qpos_seq: np.ndarray,
                                    qvel_seq: np.ndarray,
                                    dt_list: np.ndarray,
@@ -287,18 +300,75 @@ if __name__ == "__main__":
         aligned_fps = src_fps
         print(f"[INFO] Using original {len(lafan1_data_frames)} frames at {aligned_fps:.3f} Hz")
     
+    def make_retargeter():
+        return GMR(
+            src_human=f"bvh_{args.format}",
+            tgt_robot=args.robot,
+            actual_human_height=actual_human_height,
+        )
+
     # Initialize the retargeting system
-    retargeter = GMR(
-        src_human=f"bvh_{args.format}",
-        tgt_robot=args.robot,
-        actual_human_height=actual_human_height,
-    )
+    retargeter_state = {
+        "retargeter": make_retargeter(),
+        "current_compute_idx": -1,
+    }
 
     viewer_xml_override = None
     if args.robot == "roboot16":
         candidate_scene = REPO_ROOT / "Roboot1.6" / "xml" / "scene_1.xml"
         if candidate_scene.exists():
             viewer_xml_override = str(candidate_scene)
+
+    playback_state = {
+        "paused": False,
+        "exit_requested": False,
+        "display_idx": 0,
+        "step_delta": 0,
+        "reset_requested": False,
+    }
+
+    def print_playback_status(prefix):
+        total_frames = len(lafan1_data_frames)
+        if total_frames <= 0:
+            print(f"{prefix}: no frames")
+            return
+        idx = clamp_frame_index(playback_state["display_idx"], total_frames)
+        current_seconds = idx / float(aligned_fps) if aligned_fps > 0 else 0.0
+        total_seconds = total_frames / float(aligned_fps) if aligned_fps > 0 else 0.0
+        print(
+            f"{prefix}: frame {idx + 1}/{total_frames} | "
+            f"time {current_seconds:.3f}s / {total_seconds:.3f}s"
+        )
+
+    def keyboard_callback(keycode):
+        key_char = safe_key_char(keycode)
+        upper_char = key_char.upper()
+
+        if key_char == " ":
+            playback_state["paused"] = not playback_state["paused"]
+            print_playback_status("Paused" if playback_state["paused"] else "Resumed")
+        elif keycode == 262:
+            playback_state["paused"] = True
+            playback_state["step_delta"] += 1
+            print_playback_status("Step forward")
+        elif keycode == 263:
+            playback_state["paused"] = True
+            playback_state["step_delta"] -= 1
+            print_playback_status("Step backward")
+        elif upper_char == "R":
+            playback_state["paused"] = True
+            playback_state["reset_requested"] = True
+            print_playback_status("Reset requested")
+        elif keycode == 256 or upper_char == "Q":
+            playback_state["exit_requested"] = True
+            print("Exit viewer")
+        elif upper_char == "H":
+            print("Controls:")
+            print("  Space: pause/resume")
+            print("  Left / Right: single-frame step and pause")
+            print("  R: reset to frame 1 and pause")
+            print("  H: print controls")
+            print("  Q / Esc: quit")
 
     robot_motion_viewer = None
     if not args.headless:
@@ -307,10 +377,12 @@ if __name__ == "__main__":
                                                 transparent_robot=0,
                                                 record_video=args.record_video,
                                                 video_path=args.video_path,
+                                                keyboard_callback=keyboard_callback,
                                                 xml_path_override=viewer_xml_override,
                                                 # video_width=2080,
                                                 # video_height=1170
                                                 )
+        print("Controls: Space pause/resume | Left/Right step | R reset | H help | Q/Esc quit")
     
     # FPS measurement variables
     fps_counter = 0
@@ -324,9 +396,11 @@ if __name__ == "__main__":
         save_dir = os.path.dirname(args.save_path)
         if save_dir:  # Only create directory if it's not empty
             os.makedirs(save_dir, exist_ok=True)
-        qpos_list = []
-        qvel_list = []
-        frame_dt_list = []
+
+    qpos_list = []
+    qvel_list = []
+    frame_dt_list = [0.0]
+    scaled_human_data_list = []
 
     # Create tqdm progress bar for the total number of frames
     pbar = tqdm(total=len(lafan1_data_frames), desc="Retargeting")
@@ -336,18 +410,118 @@ if __name__ == "__main__":
     next_frame_time = time.perf_counter()
 
     # Start the viewer
-    i = 0
-    
     target_dt = 1.0 / float(aligned_fps)  # 目标帧时长（传给 retarget）
+    total_frames = len(lafan1_data_frames)
+
+    def compute_next_frame():
+        frame_idx = retargeter_state["current_compute_idx"] + 1
+        if frame_idx >= total_frames:
+            return False
+
+        smplx_data = lafan1_data_frames[frame_idx]
+        try:
+            ret = retargeter_state["retargeter"].retarget(
+                smplx_data,
+                offset_to_ground=args.offset_to_ground,
+                frame_dt_target=target_dt,
+            )
+        except TypeError:
+            ret = retargeter_state["retargeter"].retarget(
+                smplx_data,
+                offset_to_ground=args.offset_to_ground,
+            )
+
+        if isinstance(ret, tuple):
+            if len(ret) == 3:
+                qpos, _qvel_last, qvel = ret
+            elif len(ret) == 2:
+                qpos, qvel = ret
+            else:
+                raise RuntimeError(f"Unexpected retarget() return length: {len(ret)}")
+        else:
+            qpos = ret
+            _qvel_last = None
+            qvel = None
+
+        dt_this = getattr(retargeter_state["retargeter"], "last_frame_dt", None)
+        if not (isinstance(dt_this, (float, np.floating)) and np.isfinite(dt_this) and dt_this > 0.0):
+            dt_this = target_dt
+
+        if qvel is None:
+            qvel = np.zeros(retargeter_state["retargeter"].configuration.model.nv, dtype=float)
+
+        qpos_list.append(np.asarray(qpos).copy())
+        qvel_list.append(np.asarray(qvel).copy())
+        frame_dt_list.append(float(dt_this))
+        scaled_human_data_list.append(retargeter_state["retargeter"].scaled_human_data)
+        retargeter_state["current_compute_idx"] = frame_idx
+        if pbar.n < pbar.total:
+            pbar.update(1)
+        return True
+
+    def rebuild_to_frame(target_idx):
+        target_idx = clamp_frame_index(target_idx, total_frames)
+        retargeter_state["retargeter"] = make_retargeter()
+        retargeter_state["current_compute_idx"] = -1
+
+        while len(qpos_list) <= target_idx:
+            if not compute_next_frame():
+                break
+
+        for replay_idx in range(target_idx + 1):
+            smplx_data = lafan1_data_frames[replay_idx]
+            try:
+                retargeter_state["retargeter"].retarget(
+                    smplx_data,
+                    offset_to_ground=args.offset_to_ground,
+                    frame_dt_target=target_dt,
+                )
+            except TypeError:
+                retargeter_state["retargeter"].retarget(
+                    smplx_data,
+                    offset_to_ground=args.offset_to_ground,
+                )
+        retargeter_state["current_compute_idx"] = target_idx
+
+    def ensure_frame_available(target_idx):
+        target_idx = clamp_frame_index(target_idx, total_frames)
+        while len(qpos_list) <= target_idx:
+            if not compute_next_frame():
+                break
+        if target_idx < retargeter_state["current_compute_idx"]:
+            rebuild_to_frame(target_idx)
+        return target_idx < len(qpos_list)
 
     try:
-        # 让 frame_dt 与索引对齐：先放一个占位 0.0（表示第 0 帧不存在的前置区间）
-        if args.save_path is not None:
-            frame_dt_list.append(0.0)
-
         while True:
+            if playback_state["exit_requested"]:
+                break
+
+            if playback_state["reset_requested"]:
+                playback_state["display_idx"] = 0
+                rebuild_to_frame(0)
+                playback_state["reset_requested"] = False
+
+            if playback_state["step_delta"] != 0:
+                proposed = playback_state["display_idx"] + playback_state["step_delta"]
+                if args.loop and total_frames > 0:
+                    proposed %= total_frames
+                else:
+                    proposed = clamp_frame_index(proposed, total_frames)
+                playback_state["display_idx"] = proposed
+                playback_state["step_delta"] = 0
+
+            if not ensure_frame_available(playback_state["display_idx"]):
+                break
+
+            if (
+                not playback_state["paused"]
+                and playback_state["display_idx"] != retargeter_state["current_compute_idx"]
+            ):
+                rebuild_to_frame(playback_state["display_idx"])
+
             # 限速（仅开启时）
-            if args.rate_limit:
+            if args.rate_limit and not playback_state["paused"]:
                 now = time.perf_counter()
                 if now < next_frame_time:
                     time.sleep(next_frame_time - now)
@@ -365,46 +539,11 @@ if __name__ == "__main__":
                 fps_counter = 0
                 fps_start_time = current_time
                 
-            # Update progress bar
-            pbar.update(1)
-
-            # Update task targets.
-            smplx_data = lafan1_data_frames[i]
-
-            # retarget with frame_dt_target
-            try:
-                ret = retargeter.retarget(
-                    smplx_data,
-                    offset_to_ground=args.offset_to_ground,
-                    frame_dt_target=target_dt,
-                )
-            except TypeError:
-                ret = retargeter.retarget(
-                    smplx_data,
-                    offset_to_ground=args.offset_to_ground,
-                )
-
-            # 解包：兼容新旧两种 retarget() 返回格式
-            if isinstance(ret, tuple):
-                if len(ret) == 3:
-                    qpos, _qvel_last, qvel = ret
-                elif len(ret) == 2:
-                    qpos, qvel = ret
-                    _qvel_last = None
-                else:
-                    raise RuntimeError(f"Unexpected retarget() return length: {len(ret)}")
-            else:
-                qpos = ret
-                _qvel_last = None
-                qvel = None
-
-            # dt：优先取 retarget.last_frame_dt；没有就用目标帧时长
-            dt_this = getattr(retargeter, "last_frame_dt", None)
-            if not (isinstance(dt_this, (float, np.floating)) and np.isfinite(dt_this) and dt_this > 0.0):
-                dt_this = target_dt
-
             # 获取机器人对应连杆名称列表
-            robot_frames = retargeter.ik_match_table1.keys()
+            robot_frames = retargeter_state["retargeter"].ik_match_table1.keys()
+            display_idx = clamp_frame_index(playback_state["display_idx"], total_frames)
+            qpos = qpos_list[display_idx]
+            human_motion_data = scaled_human_data_list[display_idx]
             
             # 可视化
             if robot_motion_viewer is not None:
@@ -412,26 +551,31 @@ if __name__ == "__main__":
                     root_pos=qpos[:3],
                     root_rot=qpos[3:7],
                     dof_pos=qpos[7:],
-                    human_motion_data=retargeter.scaled_human_data,
+                    human_motion_data=human_motion_data,
                     human_pos_offset=np.array([0.0, 0.0, 0.0]),
                     show_human_body_name=False,
                     robot_frames=robot_frames,
                     show_robot_body_name=False,
-                    rate_limit=args.rate_limit,
+                    rate_limit=False,
                     # human_pos_offset=np.array([0.0, 0.0, 0.0])
                 )
 
-            if args.loop:
-                i = (i + 1) % len(lafan1_data_frames)
+            if playback_state["paused"]:
+                time.sleep(0.01)
             else:
-                i += 1
-                if i >= len(lafan1_data_frames):
-                    break
-   
-            if args.save_path is not None:
-                qpos_list.append(qpos)
-                qvel_list.append(qvel)
-                frame_dt_list.append(float(dt_this))  # 区间 (i-1 -> i) 的 dt
+                if args.loop and total_frames > 0:
+                    next_idx = (display_idx + 1) % total_frames
+                    playback_state["display_idx"] = next_idx
+                    if next_idx <= display_idx:
+                        rebuild_to_frame(next_idx)
+                    else:
+                        ensure_frame_available(next_idx)
+                else:
+                    next_idx = display_idx + 1
+                    if next_idx >= total_frames:
+                        break
+                    playback_state["display_idx"] = next_idx
+                    ensure_frame_available(next_idx)
     
     finally:
         # —— 确保渲染与录制干净关闭，避免 GLXBadContext / segfault —— #

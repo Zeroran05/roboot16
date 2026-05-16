@@ -219,8 +219,8 @@ def main():
     parser.add_argument("--human_contact_speed_threshold", type=float, default=0.35)
     parser.add_argument("--disable_calibrated_sole", action="store_true", default=False)
     parser.add_argument("--disable_foot_flattening", action="store_true", default=False)
-    parser.add_argument("--foot_flatten_iterations", type=int, default=2)
-    parser.add_argument("--foot_flatten_step", type=float, default=0.035)
+    parser.add_argument("--foot_flatten_iterations", type=int, default=4)
+    parser.add_argument("--foot_flatten_step", type=float, default=0.02)
     parser.add_argument("--foot_flatten_tracking_weight", type=float, default=0.08)
     parser.add_argument("--disable_sequence_foot_flattening", action="store_true", default=False)
     parser.add_argument("--sequence_foot_flatten_contact_pre_roll", type=int, default=8)
@@ -391,6 +391,7 @@ def main():
             stance_feet_seq=stance_feet_list,
             contact_pre_roll=args.sequence_foot_flatten_contact_pre_roll,
             contact_post_roll=args.sequence_foot_flatten_contact_post_roll,
+            show_progress=True,
         )
         qpos_list = [qpos.copy() for qpos in qpos_arr]
         post_processed = True
@@ -409,6 +410,7 @@ def main():
             max_step_up=args.sequence_ground_max_step_up,
             contact_pre_roll=args.sequence_ground_contact_pre_roll,
             contact_post_roll=args.sequence_ground_contact_post_roll,
+            show_progress=True,
         )
         qvel_arr = retargeter.recompute_qvel_sequence(qpos_arr, frame_dt_list)
         qpos_list = [qpos.copy() for qpos in qpos_arr]

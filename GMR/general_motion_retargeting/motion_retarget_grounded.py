@@ -34,8 +34,8 @@ class GroundedMotionRetargeting(GeneralMotionRetargeting):
         human_contact_height_threshold: float = 0.06,
         human_contact_speed_threshold: float = 0.35,
         enable_foot_flattening: bool = True,
-        foot_flatten_iterations: int = 2,
-        foot_flatten_step: float = 0.035,
+        foot_flatten_iterations: int = 4,
+        foot_flatten_step: float = 0.02,
         foot_flatten_tracking_weight: float = 0.08,
         enable_stance_lock: bool = True,
         stance_height_threshold: float = 0.04,
@@ -151,6 +151,7 @@ class GroundedMotionRetargeting(GeneralMotionRetargeting):
         max_step_up: float = 0.04,
         contact_pre_roll: int = 6,
         contact_post_roll: int = 2,
+        show_progress: bool = False,
     ) -> np.ndarray:
         """Smooth the exported root-z path with whole-sequence ground constraints.
 
@@ -176,7 +177,15 @@ class GroundedMotionRetargeting(GeneralMotionRetargeting):
         min_safe_z = qpos_arr[:, 2].copy()
 
         try:
-            for frame_idx, qpos in enumerate(qpos_arr):
+            iterator = enumerate(qpos_arr)
+            if show_progress:
+                try:
+                    from tqdm import tqdm
+
+                    iterator = tqdm(iterator, total=qpos_arr.shape[0], desc="Sequence root-z smoothing")
+                except Exception:
+                    pass
+            for frame_idx, qpos in iterator:
                 self.configuration.data.qpos[:] = qpos
                 mj.mj_forward(self.configuration.model, self.configuration.data)
                 foot_states = self._measure_feet()
@@ -242,6 +251,7 @@ class GroundedMotionRetargeting(GeneralMotionRetargeting):
         stance_feet_seq=None,
         contact_pre_roll: int = 8,
         contact_post_roll: int = 3,
+        show_progress: bool = False,
     ) -> np.ndarray:
         qpos_arr = np.asarray(qpos_seq, dtype=float).copy()
         if qpos_arr.ndim != 2 or qpos_arr.shape[0] == 0:
@@ -257,7 +267,15 @@ class GroundedMotionRetargeting(GeneralMotionRetargeting):
         original_qpos = self.configuration.data.qpos.copy()
         target_min_z = self.ground_height + self.ground_clearance
         try:
-            for frame_idx, stance_feet in enumerate(stance_feet_seq):
+            iterator = enumerate(stance_feet_seq)
+            if show_progress:
+                try:
+                    from tqdm import tqdm
+
+                    iterator = tqdm(iterator, total=qpos_arr.shape[0], desc="Sequence foot flattening")
+                except Exception:
+                    pass
+            for frame_idx, stance_feet in iterator:
                 if not stance_feet:
                     continue
                 self.configuration.data.qpos[:] = qpos_arr[frame_idx]
@@ -832,9 +850,7 @@ class GroundedMotionRetargeting(GeneralMotionRetargeting):
     def _geom_local_min_z(self, geom_id: int) -> float:
         geom_type = self.model.geom_type[geom_id]
         pos = self.model.geom_pos[geom_id]
-        mat_flat = np.zeros(9, dtype=float)
-        mj.mju_quat2Mat(mat_flat, self.model.geom_quat[geom_id])
-        mat = mat_flat.reshape(3, 3)
+        mat = self._quat_to_mat_wxyz(self.model.geom_quat[geom_id])
         size = self.model.geom_size[geom_id]
 
         if geom_type == mj.mjtGeom.mjGEOM_MESH:
@@ -866,3 +882,18 @@ class GroundedMotionRetargeting(GeneralMotionRetargeting):
             return float(min(end_a[2], end_b[2]) - radius)
 
         return float(pos[2])
+
+    def _quat_to_mat_wxyz(self, quat) -> np.ndarray:
+        quat = np.asarray(quat, dtype=float)
+        norm = float(np.linalg.norm(quat))
+        if norm <= 1e-12:
+            return np.eye(3)
+        w, x, y, z = quat / norm
+        return np.array(
+            [
+                [1.0 - 2.0 * (y * y + z * z), 2.0 * (x * y - z * w), 2.0 * (x * z + y * w)],
+                [2.0 * (x * y + z * w), 1.0 - 2.0 * (x * x + z * z), 2.0 * (y * z - x * w)],
+                [2.0 * (x * z - y * w), 2.0 * (y * z + x * w), 1.0 - 2.0 * (x * x + y * y)],
+            ],
+            dtype=float,
+        )

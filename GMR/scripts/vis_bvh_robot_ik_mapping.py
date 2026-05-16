@@ -190,6 +190,7 @@ def main() -> None:
     )
 
     robot_root_pos = np.asarray(offset_scaled_human_data[human_root_name][0], dtype=np.float32)
+    viewer.viewer.cam.lookat[:] = robot_root_pos + np.array([0.0, 0.0, -0.4], dtype=np.float32)
 
     print(f"[INFO] Using BVH frame {frame_idx + 1}/{len(human_frames)}")
     print(f"[INFO] Human root: {human_root_name} | Robot root: {ik_cfg['robot_root_name']}")

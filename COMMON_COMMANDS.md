@@ -1,100 +1,59 @@
-# Roboot16 AMP 常用指令
+# Roboot16 常用指令
 
-本文整理了 `roboot16` 当前最常用的一组命令，默认工作目录为：
+本文按当前仓库结构整理常用命令。
 
-```bash
-cd /root/isaaclab
-```
-
-## Git 常用命令
-
-进入仓库目录：
+默认 Isaac Lab 根目录：
 
 ```bash
-cd /root/isaaclab/roboot16
+cd /path/to/IsaacLab
 ```
 
-查看当前状态：
+默认 `roboot16` Git 仓库目录：
+
+```bash
+cd /path/to/IsaacLab/roboot16
+```
+
+## 1. Git
+
+查看状态：
 
 ```bash
 git status
-```
-
-查看当前分支和最近一次提交：
-
-```bash
 git branch --show-current
-git log --oneline -1
-```
-
-查看当前 commit 的短编号：
-
-```bash
-git rev-parse --short HEAD
-```
-
-拉取远程最新代码：
-
-```bash
-git pull origin main
-```
-
-添加本次修改：
-
-```bash
-git add .
-```
-
-提交本次修改：
-
-```bash
-git commit -m "your message"
-```
-
-推送到远程仓库：
-
-```bash
-git push origin main
-```
-
-查看最近几次提交：
-
-```bash
 git log --oneline -5
 ```
 
-查看某次训练对应的 Git 记录：
+只恢复 `roboot16` 里的某个文件夹到历史提交：
 
 ```bash
-find logs -maxdepth 4 -type f | rg '/git/|\.diff$'
+git restore --source <commit> src/roboot16_amp_project/tasks/roboot16_amp
 ```
 
-从服务器同步日志回本地（示例）：
+注意：`roboot16` 是独立 Git 仓库，恢复目录时路径要相对于 `roboot16/`，不要再写一层 `roboot16/...`。
+
+查看某个目录当前改动：
 
 ```bash
-rsync -avz <server>:/path/to/roboot16/logs/ ./logs_remote/
+git diff -- src/roboot16_amp_project/tasks/roboot16_amp
 ```
 
-## 0. 常用任务一览
+## 2. 任务一览
 
-| 任务类型 | Task ID | 用途说明 |
-| --- | --- | --- |
-| 普通速度任务 | `Isaac-Roboot16-Flat-Project-v0` | 不带 AMP 的普通速度跟踪训练任务 |
-| 普通速度任务 Play | `Isaac-Roboot16-Flat-Project-Play-v0` | 不带 AMP 的普通速度任务可视化/播放版本 |
-| 普通 AMP 任务 | `Isaac-Roboot16-AMP-Flat-Project-v0` | 当前默认 AMP 训练任务，使用 `data/amp_expert/*.txt` |
-| 普通 AMP 任务 Play | `Isaac-Roboot16-AMP-Flat-Project-Play-v0` | 当前默认 AMP 任务可视化/播放版本 |
-| 高速 AMP 任务 | `Isaac-Roboot16-AMP-Flat-HighSpeed-Project-v0` | 在原 AMP 参数基础上额外加入高速速度课程的任务 |
-| 高速 AMP 任务 Play | `Isaac-Roboot16-AMP-Flat-HighSpeed-Project-Play-v0` | 高速 AMP 任务的可视化/播放版本 |
+| 任务类型 | Task ID |
+| --- | --- |
+| 普通速度训练 | `Isaac-Roboot16-Flat-Project-v0` |
+| 普通速度播放 | `Isaac-Roboot16-Flat-Project-Play-v0` |
+| AMP 训练 | `Isaac-Roboot16-AMP-Flat-Project-v0` |
+| AMP 播放 | `Isaac-Roboot16-AMP-Flat-Project-Play-v0` |
+| 高速 AMP 训练 | `Isaac-Roboot16-AMP-Flat-HighSpeed-Project-v0` |
+| 高速 AMP 播放 | `Isaac-Roboot16-AMP-Flat-HighSpeed-Project-Play-v0` |
+| Mimic 训练 | `Isaac-Roboot16-Mimic-Project-v0` |
+| Mimic 播放 | `Isaac-Roboot16-Mimic-Project-Play-v0` |
 
-如果你现在想做：
+## 3. AMP 训练
 
-- 普通 AMP 训练：用 `Isaac-Roboot16-AMP-Flat-Project-v0`
-- 高速 AMP 训练：用 `Isaac-Roboot16-AMP-Flat-HighSpeed-Project-v0`
-- 普通非 AMP 速度训练：用 `Isaac-Roboot16-Flat-Project-v0`
-
-## 1. 启动 AMP 训练
-
-带录像，录像间隔为 `2000` step：
+普通 AMP：
 
 ```bash
 ./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
@@ -103,7 +62,7 @@ rsync -avz <server>:/path/to/roboot16/logs/ ./logs_remote/
   --video_interval 2000
 ```
 
-无界面训练：
+无界面：
 
 ```bash
 ./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
@@ -113,42 +72,114 @@ rsync -avz <server>:/path/to/roboot16/logs/ ./logs_remote/
   --headless
 ```
 
-如果想额外控制每段录像长度，例如 `500` step：
+高速 AMP：
+
+```bash
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
+  --task Isaac-Roboot16-AMP-Flat-HighSpeed-Project-v0 \
+  --video \
+  --video_interval 2000 \
+  --headless
+```
+
+恢复训练：
 
 ```bash
 ./isaaclab.sh -p roboot16/scripts/reinforcement_learning/amp_rsl_rl/train.py \
   --task Isaac-Roboot16-AMP-Flat-Project-v0 \
+  --headless \
+  --resume \
+  --load_run <run_dir> \
+  --checkpoint model_<iter>.pt
+```
+
+## 4. 非 AMP / Mimic 训练
+
+普通速度训练：
+
+```bash
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py \
+  --task Isaac-Roboot16-Flat-Project-v0 \
+  --headless
+```
+
+Mimic 训练：
+
+```bash
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py \
+  --task Isaac-Roboot16-Mimic-Project-v0 \
+  --headless \
   --video \
-  --video_interval 2000 \
-  --video_length 500
+  --video_interval 8000
 ```
 
-## 2. 用 TensorBoard 查看训练曲线
-
-查看整个 AMP 训练目录：
+Mimic 恢复训练：
 
 ```bash
-tensorboard --logdir /root/isaaclab/roboot16/logs/amp_rsl_rl/roboot16_amp_flat_project
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py \
+  --task Isaac-Roboot16-Mimic-Project-v0 \
+  --headless \
+  --resume \
+  --load_run <run_dir> \
+  --checkpoint model_<iter>.pt \
+  --video \
+  --video_interval 6000
 ```
 
-只看某一次 run：
+## 5. Play 与导出模型
+
+播放普通策略：
 
 ```bash
-tensorboard --logdir /root/isaaclab/roboot16/logs/amp_rsl_rl/roboot16_amp_flat_project/2026-05-04_18-28-17_run1_subject2
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/play.py \
+  --task Isaac-Roboot16-Flat-Project-Play-v0 \
+  --checkpoint /path/to/model.pt
 ```
 
-如果只想先找到最新一次训练目录：
+播放 Mimic 并导出 ONNX：
 
 ```bash
-ls -lt /root/isaaclab/roboot16/logs/amp_rsl_rl/roboot16_amp_flat_project | head
+./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/play.py \
+  --task Isaac-Roboot16-Mimic-Project-Play-v0 \
+  --checkpoint /path/to/roboot16/logs/rsl_rl/roboot16_mimic_project/<run>/model_<iter>.pt \
+  --headless \
+  --video \
+  --video_length 1500
 ```
 
-## 3. 导出 MuJoCo pkl 为 AMP expert txt
+导出的文件默认会写到：
 
-示例：把 `run1_subject2.pkl` 导出为当前 AMP 使用的 `txt`
+```text
+roboot16/logs/rsl_rl/roboot16_mimic_project/<run>/exported/
+```
+
+如果要拷到部署目录：
 
 ```bash
-cd /root/isaaclab/roboot16
+cp /path/to/roboot16/logs/rsl_rl/roboot16_mimic_project/<run>/exported/policy.onnx \
+   /path/to/IsaacLab/roboot16/deploy/pre_train/roboot16_mimic/policy.onnx
+```
+
+## 6. TensorBoard
+
+查看整个 AMP 实验目录：
+
+```bash
+tensorboard --logdir /path/to/IsaacLab/roboot16/logs/amp_rsl_rl/roboot16_amp_flat_project
+```
+
+查看某次 Mimic 实验目录：
+
+```bash
+tensorboard --logdir /path/to/IsaacLab/roboot16/logs/rsl_rl/roboot16_mimic_project/<run>
+```
+
+## 7. AMP 数据导出与回放
+
+从 PKL 导出 AMP expert txt：
+
+```bash
+cd /path/to/IsaacLab/roboot16
 
 python3 GMR/scripts/export_roboot16_amp_expert.py \
   --input_pkl data/source_pkl/run1_subject2.pkl \
@@ -157,86 +188,67 @@ python3 GMR/scripts/export_roboot16_amp_expert.py \
   --robot_xml assets/Roboot1.6/xml/roboot16_1.xml
 ```
 
-如果想边导出边可视化：
-
-```bash
-cd /root/isaaclab/roboot16
-
-python3 GMR/scripts/export_roboot16_amp_expert.py \
-  --input_pkl data/source_pkl/run1_subject2.pkl \
-  --output_txt data/amp_expert/run1_subject2.txt \
-  --output_debug_pkl data/amp_expert/run1_subject2_debug.pkl \
-  --robot_xml assets/Roboot1.6/xml/roboot16_1.xml \
-  --visualize
-```
-
-## 4. 在 Isaac Sim 中回放并校验 txt / pkl
-
-只有 `txt`，固定 root：
+在 Isaac Sim 中回放 txt：
 
 ```bash
 ./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16/data/amp_expert/stand/stand_0p0.txt
+  --txt /path/to/IsaacLab/roboot16/data/amp_expert/run1_2.txt
 ```
 
-同时给 `txt + pkl`，root 按 `pkl` 轨迹运动：
+同时给 `txt + pkl` 做对照：
 
 ```bash
 ./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt \
-  --pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl
+  --txt /path/to/IsaacLab/roboot16/data/amp_expert/run1_2.txt \
+  --pkl /path/to/IsaacLab/roboot16/data/segments/run1_2.pkl
 ```
 
-循环播放并放慢速度：
+## 8. Mimic 数据处理
+
+CSV 转 NPZ：
 
 ```bash
-./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt \
-  --pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl \
-  --loop \
-  --playback-speed 0.3
-```
-
-只做数值比对，不开回放窗口：
-
-```bash
-./isaaclab.sh -p roboot16/scripts/visualize_amp_replay_isaacsim.py \
-  --txt /root/isaaclab/roboot16/data/amp_expert/run1_2.txt \
-  --pkl /root/isaaclab/roboot16/data/segments/run1_2.pkl \
-  --compare-only
-```
-
-## 5.mimic 相关指令
-1. 训练：
-./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py   --task Isaac-Roboot16-Mimic-Project-v0   --headless   --video   --video_interval 8000
-2. resume训练：
-./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/train.py   --task Isaac-Roboot16-Mimic-Project-v0   --headless   --resume   --load_run 2026-05-13_16-59-21   --checkpoint model_1500.pt   --video   --video_interval 6000
-3. play和导出onnx
-./isaaclab.sh -p roboot16/scripts/reinforcement_learning/rsl_rl/play.py \
-  --task Isaac-Roboot16-Mimic-Project-Play-v0 \
-  --checkpoint /root/isaaclab/roboot16/logs/rsl_rl/roboot16_mimic_project/2026-05-13_19-17-47/model_11000.pt \
-  --headless \
-  --video \
-  --video_length 1500 && \
-cp /root/isaaclab/roboot16/logs/rsl_rl/roboot16_mimic_project/2026-05-13_19-17-47/exported/policy.onnx \
-   /root/isaaclab/roboot16/deploy/pre_train/roboot16_mimic/policy.onnx
-   
-4. 在 Isaac Sim 中回放 npz
-./isaaclab.sh -p roboot16/scripts/mimic/replay_npz.py \
-  --motion_file roboot16/data/mimic/walk1_subject1_short_50hz.npz
-
-5. csv转npz
 ./isaaclab.sh -p roboot16/scripts/mimic/csv_to_npz.py \
-  --input_file roboot16/data/mimic/walk1subject1_short.csv \
+  --input_file roboot16/data/mimic/walk1_subject1_short.csv \
   --input_fps 30 \
-  --output_file roboot16/data/mimic/walk1subject1_short_50hz.npz \
+  --output_file roboot16/data/mimic/walk1_subject1_short_50hz.npz \
   --output_fps 50 \
   --headless
+```
 
-6. sim2sim:本地mujoco
+只转换部分帧：
+
+```bash
+./isaaclab.sh -p roboot16/scripts/mimic/csv_to_npz.py \
+  --input_file roboot16/data/mimic/walk1_subject1_test.csv \
+  --input_fps 30 \
+  --output_file roboot16/data/mimic/walk1_subject1_test_clip.npz \
+  --output_fps 50 \
+  --frame_range 1 900 \
+  --headless
+```
+
+在 Isaac Sim 中回放 NPZ：
+
+```bash
+./isaaclab.sh -p roboot16/scripts/mimic/replay_npz.py \
+  --motion_file roboot16/data/mimic/walk1_subject1_short_50hz.npz
+```
+
+## 9. MuJoCo sim2sim
+
+普通策略 sim2sim：
+
+```bash
+python roboot16/deploy/deploy_mujoco/deploy_mujoco_roboot16.py roboot16.yaml
+```
+
+Mimic 策略 sim2sim：
+
+```bash
 mjpython roboot16/deploy/deploy_mujoco/deploy_mujoco_roboot16_mimic.py \
   --onnx roboot16/deploy/pre_train/roboot16_mimic/policy5.onnx \
-  --motion-npz /Users/zhuran/IsaacLab/roboot16/data/mimic/walk1_subject1_test1_30s.npz \
+  --motion-npz roboot16/data/mimic/walk1_subject1_test1_30s.npz \
   --model roboot16/assets/Roboot1.6/xml/scene_1.xml \
   --simulation-dt 0.005 \
   --control-decimation 4 \
@@ -245,5 +257,5 @@ mjpython roboot16/deploy/deploy_mujoco/deploy_mujoco_roboot16_mimic.py \
   --show-reference-frames \
   --show-reference-robot \
   --reference-robot-offset-y 1.0 \
-  --reference-robot-alpha 0.35 
-
+  --reference-robot-alpha 0.35
+```

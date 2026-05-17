@@ -1,145 +1,102 @@
-# RoBoot16 AMP Export Project
+# Roboot16 Workflow Notes
 
-This folder is a self-contained bundle for the `roboot16` motion-to-AMP workflow we built in this repo.
+This folder summarizes how the current `roboot16` repo is organized inside Isaac Lab.
 
-## Structure
+## Current Scope
+
+The repository now contains three connected workflows:
+
+1. AMP locomotion training
+2. Mimic motion-tracking training
+3. MuJoCo deployment and replay
+
+## Main Project Structure
 
 ```text
 roboot16/
-├── assets/
-│   └── Roboot1.6/
-│       ├── config/
-│       │   └── joint_names_Roboot1.6.yaml
-│       └── xml/
-│           ├── roboot16_1.xml
-│           └── scene_1.xml
+├── assets/Roboot1.6/
+│   ├── config/
+│   └── xml/
 ├── data/
-│   ├── source_pkl/
-│   │   └── run1_subject2.pkl
-│   ├── segments/
-│   │   ├── run1_1.pkl
-│   │   ├── run1_2.pkl
-│   │   ├── run1_3.pkl
-│   │   ├── run1_4.pkl
-│   │   └── run1_5.pkl
-│   └── amp_expert/
-│       ├── run1_1.txt
-│       ├── run1_1_debug.pkl
-│       ├── ...
-│       ├── run1_5.txt
-│       └── run1_5_debug.pkl
-├── docs/
-│   └── README.md
+│   ├── amp_expert/
+│   └── mimic/
+├── deploy/
 ├── GMR/
-│   └── scripts/
-│       ├── export_roboot16_amp_expert.py
-│       └── split_robot_motion.py
+├── logs/
+├── scripts/
+│   ├── mimic/
+│   └── reinforcement_learning/
+└── src/
+    ├── amp_rsl_rl/
+    └── roboot16_amp_project/
 ```
 
-## What Each Part Does
+## Task Registration
 
-- `GMR/scripts/export_roboot16_amp_expert.py`
-  Replays a `roboot16` GMR motion PKL in MuJoCo, computes root-local foot positions, and exports a TianKung-style AMP expert `txt`.
-
-- `GMR/scripts/split_robot_motion.py`
-  Splits a long GMR motion PKL into multiple PKL segments by frame range.
-
-- `assets/Roboot1.6/xml/roboot16_1.xml`
-  The MuJoCo model used for forward kinematics and foot position extraction.
-
-- `data/source_pkl/run1_subject2.pkl`
-  Original full motion.
-
-- `data/segments/run1_*.pkl`
-  Segmented motion clips.
-
-- `data/amp_expert/run1_*.txt`
-  Exported AMP expert files.
-
-- `data/amp_expert/run1_*_debug.pkl`
-  Debug PKLs containing the original motion plus extracted foot positions:
-  `foot_link_body_pos` is root-local.
-  `foot_link_body_pos_world` is world-frame.
-
-## AMP Expert Frame Layout
-
-Each frame in `run1_*.txt` is 30-dimensional:
+Task registration lives under:
 
 ```text
-right_leg_q(6),
-left_leg_q(6),
-right_leg_dq(6),
-left_leg_dq(6),
-left_foot_pos_local(3),
-right_foot_pos_local(3)
+src/roboot16_amp_project/tasks/
 ```
 
-Joint order is:
+Current task groups:
+
+- `roboot16/`: flat velocity task
+- `roboot16_amp/`: AMP flat and AMP high-speed tasks
+- `roboot16_mimic/`: motion-tracking mimic task
+
+## Data Flow
+
+### AMP
 
 ```text
-right_hip_pitch_joint
-right_hip_roll_joint
-right_hip_yaw_joint
-right_knee_joint
-right_ankle_pitch_joint
-right_ankle_roll_joint
-left_hip_pitch_joint
-left_hip_roll_joint
-left_hip_yaw_joint
-left_knee_joint
-left_ankle_pitch_joint
-left_ankle_roll_joint
+PKL / source motion
+-> GMR export helper
+-> data/amp_expert/*.txt
+-> AMP training
 ```
 
-This order was verified against the MuJoCo model order:
-- `qpos[7:]`
-- `qvel[6:]`
-- actuator-to-joint order
+### Mimic
 
-## Environment
-
-Required Python packages:
-
-- `mujoco`
-- `numpy`
-
-If you want visualization on macOS, use `mjpython`.
-
-## Common Commands
-
-Run AMP export headless:
-
-```bash
-python GMR/scripts/export_roboot16_amp_expert.py \
-  --input_pkl data/segments/run1_1.pkl \
-  --output_txt data/amp_expert/run1_1.txt \
-  --output_debug_pkl data/amp_expert/run1_1_debug.pkl \
-  --robot_xml assets/Roboot1.6/xml/roboot16_1.xml
+```text
+CSV motion
+-> scripts/mimic/csv_to_npz.py
+-> data/mimic/*.npz
+-> mimic training
+-> exported/policy.onnx
+-> MuJoCo mimic deploy
 ```
 
-Run AMP export with visualization:
+## Important Entry Points
 
-```bash
-mjpython GMR/scripts/export_roboot16_amp_expert.py \
-  --input_pkl data/segments/run1_1.pkl \
-  --output_txt data/amp_expert/run1_1.txt \
-  --output_debug_pkl data/amp_expert/run1_1_debug.pkl \
-  --robot_xml assets/Roboot1.6/xml/roboot16_1.xml \
-  --visualize
+AMP train:
+
+```text
+scripts/reinforcement_learning/amp_rsl_rl/train.py
 ```
 
-Split a full motion:
+RSL-RL train/play:
 
-```bash
-python GMR/scripts/split_robot_motion.py \
-  --input data/source_pkl/run1_subject2.pkl \
-  --output_dir data/segments \
-  --segment 3362:3415 \
-  --segment 3465:3548
+```text
+scripts/reinforcement_learning/rsl_rl/train.py
+scripts/reinforcement_learning/rsl_rl/play.py
 ```
 
-## Migration Note
+Mimic data tools:
 
-For server migration, copy this whole folder as-is. The export script no longer depends on
-`general_motion_retargeting.params`; it can work directly from the bundled `roboot16_1.xml`
-via `--robot_xml`.
+```text
+scripts/mimic/csv_to_npz.py
+scripts/mimic/replay_npz.py
+```
+
+MuJoCo deploy:
+
+```text
+deploy/deploy_mujoco/deploy_mujoco_roboot16.py
+deploy/deploy_mujoco/deploy_mujoco_roboot16_mimic.py
+```
+
+## Git Note
+
+`roboot16/` has its own `.git` directory. If you want to restore or diff files here, run Git commands in
+`roboot16/` itself, not only in the outer `IsaacLab/` repository.

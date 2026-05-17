@@ -1,0 +1,43 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local IDE/editor
+.vscode/
+.idea/
+
+# Local runtime/license
+*.lic
+
+# Packaging scripts (do not open-source)
+build.py
+build_secure.py
+build_commercial.py
+generate_key.py
+
+# Build/packaging artifacts
+build/
+dist/
+*.spec
+*.AppImage
+*.AppDir/
+*.tar.gz
+appimagetool
+appimagetool-*.AppImage
+
+# Test outputs
+*.png
+
+# Large or private data folders (keep structure via .gitkeep)
+bvh/*
+!bvh/.gitkeep
+retargeted/*
+!retargeted/.gitkeep
+smplx/*
+!smplx/.gitkeep
+assets/body_models/smplx/*
+!assets/body_models/smplx/.gitkeep
+
+# Other local archive folders
+old_version/

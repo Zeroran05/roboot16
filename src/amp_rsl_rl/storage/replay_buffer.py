@@ -47,9 +47,6 @@ class ReplayBuffer:
         self.command_speeds = torch.zeros(
             (buffer_size, 1), dtype=torch.float32, device=self.device
         )
-        self.root_speeds = torch.zeros(
-            (buffer_size, 1), dtype=torch.float32, device=self.device
-        )
 
         self.step = 0
         self.num_samples = 0
@@ -59,7 +56,6 @@ class ReplayBuffer:
         states: torch.Tensor,
         next_states: torch.Tensor,
         command_speeds: torch.Tensor | None = None,
-        root_speeds: torch.Tensor | None = None,
     ) -> None:
         """
         Add a batch of states and next_states to the buffer.
@@ -77,29 +73,22 @@ class ReplayBuffer:
             command_speeds = torch.zeros((batch_size, 1), dtype=torch.float32, device=self.device)
         else:
             command_speeds = command_speeds.to(self.device).reshape(batch_size, 1)
-        if root_speeds is None:
-            root_speeds = torch.zeros((batch_size, 1), dtype=torch.float32, device=self.device)
-        else:
-            root_speeds = root_speeds.to(self.device).reshape(batch_size, 1)
         end = self.step + batch_size
 
         if end <= self.buffer_size:
             self.states[self.step : end] = states
             self.next_states[self.step : end] = next_states
             self.command_speeds[self.step : end] = command_speeds
-            self.root_speeds[self.step : end] = root_speeds
         else:
             # Wrap around
             first_part = self.buffer_size - self.step
             self.states[self.step :] = states[:first_part]
             self.next_states[self.step :] = next_states[:first_part]
             self.command_speeds[self.step :] = command_speeds[:first_part]
-            self.root_speeds[self.step :] = root_speeds[:first_part]
             remainder = batch_size - first_part
             self.states[:remainder] = states[first_part:]
             self.next_states[:remainder] = next_states[first_part:]
             self.command_speeds[:remainder] = command_speeds[first_part:]
-            self.root_speeds[:remainder] = root_speeds[first_part:]
 
         # Update pointers
         self.step = end % self.buffer_size
@@ -110,7 +99,7 @@ class ReplayBuffer:
         num_mini_batch: int,
         mini_batch_size: int,
         allow_replacement: bool = True,
-    ) -> Generator[Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], None, None]:
+    ) -> Generator[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], None, None]:
         """
         Yield `num_mini_batch` mini‑batches of (state, next_state) tuples from the buffer,
         each of length `mini_batch_size`.
@@ -151,12 +140,7 @@ class ReplayBuffer:
         # Yield the mini‑batches
         for i in range(num_mini_batch):
             batch_idx = indices[i * mini_batch_size : (i + 1) * mini_batch_size]
-            yield (
-                self.states[batch_idx],
-                self.next_states[batch_idx],
-                self.command_speeds[batch_idx],
-                self.root_speeds[batch_idx],
-            )
+            yield self.states[batch_idx], self.next_states[batch_idx], self.command_speeds[batch_idx]
 
     def __len__(self) -> int:
         """

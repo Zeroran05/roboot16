@@ -91,10 +91,6 @@ class AMP_PPO:
         desired_kl: float = 0.01,
         amp_replay_buffer_size: int = 100000,
         use_smooth_ratio_clipping: bool = False,
-        expert_sampling_cmd_weight: float = 0.3,
-        expert_sampling_root_vel_weight: float = 0.7,
-        expert_sampling_speed_min: float = 0.0,
-        expert_sampling_speed_max: float = 4.5,
         device: str = "cpu",
     ) -> None:
         # Set device and learning hyperparameters
@@ -149,10 +145,6 @@ class AMP_PPO:
         self.max_grad_norm: float = max_grad_norm
         self.use_clipped_value_loss: bool = use_clipped_value_loss
         self.use_smooth_ratio_clipping: bool = use_smooth_ratio_clipping
-        self.expert_sampling_cmd_weight: float = float(expert_sampling_cmd_weight)
-        self.expert_sampling_root_vel_weight: float = float(expert_sampling_root_vel_weight)
-        self.expert_sampling_speed_min: float = float(expert_sampling_speed_min)
-        self.expert_sampling_speed_max: float = float(expert_sampling_speed_max)
         self.last_amp_debug_sample: dict[str, float | str | int] | None = None
 
     def init_storage(
@@ -222,12 +214,7 @@ class AMP_PPO:
         self.transition.observations = obs
         return self.transition.actions
 
-    def act_amp(
-        self,
-        amp_obs: torch.Tensor,
-        command_speed: torch.Tensor | None = None,
-        root_speed: torch.Tensor | None = None,
-    ) -> None:
+    def act_amp(self, amp_obs: torch.Tensor, command_speed: torch.Tensor | None = None) -> None:
         """Store the latest AMP policy observation for later replay insertion.
 
         Parameters
@@ -237,7 +224,6 @@ class AMP_PPO:
         """
         self.amp_transition.observations = amp_obs
         self.amp_transition.command_speed = command_speed
-        self.amp_transition.root_speed = root_speed
 
     def process_env_step(
         self,
@@ -287,7 +273,6 @@ class AMP_PPO:
             self.amp_transition.observations,
             amp_obs,
             getattr(self.amp_transition, "command_speed", None),
-            getattr(self.amp_transition, "root_speed", None),
         )
         self.amp_transition.clear()
 
@@ -368,18 +353,9 @@ class AMP_PPO:
             ) = sample
 
             hidden_state_actor, hidden_state_critic = (None, None)
-            policy_state, policy_next_state, policy_command_speed, policy_root_speed = sample_amp_policy
-            sampling_speed = (
-                self.expert_sampling_cmd_weight * policy_command_speed
-                + self.expert_sampling_root_vel_weight * policy_root_speed
-            )
-            sampling_speed = torch.clamp(
-                sampling_speed,
-                min=self.expert_sampling_speed_min,
-                max=self.expert_sampling_speed_max,
-            )
+            policy_state, policy_next_state, policy_command_speed = sample_amp_policy
             expert_state, expert_next_state, expert_clip_idx = self.amp_data.sample_conditioned(
-                sampling_speed, return_clip_indices=True
+                policy_command_speed, return_clip_indices=True
             )
             if hidden_states_batch is not None:
                 hidden_state_actor, hidden_state_critic = hidden_states_batch
@@ -466,17 +442,12 @@ class AMP_PPO:
             policy_state = policy_state.to(self.device)
             policy_next_state = policy_next_state.to(self.device)
             policy_command_speed = policy_command_speed.to(self.device)
-            policy_root_speed = policy_root_speed.to(self.device)
-            sampling_speed = sampling_speed.to(self.device)
             expert_state = expert_state.to(self.device)
             expert_next_state = expert_next_state.to(self.device)
             if expert_clip_idx.numel() > 0 and policy_command_speed.numel() > 0:
                 debug_idx = int(expert_clip_idx[0].item())
                 self.last_amp_debug_sample = {
                     "policy_command_speed": float(policy_command_speed[0].item()),
-                    "policy_root_speed": float(policy_root_speed[0].item()),
-                    "policy_condition_speed": float(sampling_speed[0].item()),
-                    "expert_sampling_speed": float(sampling_speed[0].item()),
                     "expert_clip_index": debug_idx,
                     "expert_clip_name": self.amp_data.dataset_names[debug_idx],
                     "expert_clip_speed": float(self.amp_data.dataset_speeds[debug_idx]),
@@ -489,19 +460,12 @@ class AMP_PPO:
             expert_next_state_raw = expert_next_state.detach().clone()
 
             B_pol = policy_state.size(0)
-            if self.discriminator.condition_dim > 0:
-                policy_condition_tensor = sampling_speed.reshape(B_pol, self.discriminator.condition_dim)
-                expert_condition_tensor = self.amp_data.clip_speeds[expert_clip_idx].reshape(
-                    B_pol, self.discriminator.condition_dim
-                )
-            else:
-                policy_condition_tensor = None
-                expert_condition_tensor = None
+            condition_tensor = policy_command_speed if self.discriminator.condition_dim > 0 else None
             policy_input = self.discriminator._build_input(
-                policy_state, policy_next_state, policy_condition_tensor
+                policy_state, policy_next_state, condition_tensor
             )
             expert_input = self.discriminator._build_input(
-                expert_state, expert_next_state, expert_condition_tensor
+                expert_state, expert_next_state, condition_tensor
             )
             discriminator_input = torch.cat((policy_input, expert_input), dim=0)
             discriminator_output = self.discriminator(discriminator_input)
@@ -516,8 +480,8 @@ class AMP_PPO:
                 expert_d=expert_d,
                 sample_amp_expert=(expert_state, expert_next_state),
                 sample_amp_policy=(policy_state, policy_next_state),
-                policy_condition=policy_condition_tensor,
-                expert_condition=expert_condition_tensor,
+                policy_condition=condition_tensor,
+                expert_condition=condition_tensor,
                 lambda_=10,
             )
 

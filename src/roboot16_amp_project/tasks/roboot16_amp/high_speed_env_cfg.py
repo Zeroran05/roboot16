@@ -84,15 +84,6 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
             "threshold": 0.4,
         },
     )
-    stand_still = RewTerm(
-        func=mdp.stand_still_joint_deviation_l1,
-        weight=-0.5,
-        params={
-            "command_name": "base_velocity",
-            "command_threshold": 0.1,
-            "asset_cfg": SceneEntityCfg("robot"),
-        },
-    )
     feet_mode_time_symmetry = RewTerm(
         func=mdp.feet_mode_time_symmetry_penalty,
         weight=-0.1,
@@ -173,6 +164,30 @@ class Roboot16AmpHighSpeedRewards(Roboot16AmpRewards):
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]),
         },
     )
+    # 惩罚yaw向外翻转过度，奖励yaw向内翻转，正为内转（有助于高速行走时的步态）
+    # outward_hip_yaw = RewTerm(
+    #     func=outward_hip_yaw_penalty,
+    #     weight=-1.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=["left_hip_yaw_joint", "right_hip_yaw_joint"],
+    #         ),
+    #         "outward_threshold": 0.12,
+    #     },
+    # )
+    # inward_hip_yaw = RewTerm(
+    #     func=inward_hip_yaw_reward,
+    #     weight=0.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=["left_hip_yaw_joint", "right_hip_yaw_joint"],
+    #         ),
+    #         "target": 0.25,
+    #         "std": 0.10,
+    #     },
+    # )
 
 
 @configclass

@@ -3,7 +3,7 @@
 # 这个配置文件用于控制 MuJoCo 部署时的模型、控制器、观测和速度命令。
 # 下面补充了“速度渐进”相关参数，可以在这里直接调，不需要改 Python 代码。
 
-policy_path: "{PROJECT_ROOT}/deploy/pre_train/roboot16/policy_low.pt"
+policy_path: "{PROJECT_ROOT}/deploy/pre_train/roboot16/policy_amp.pt"
 xml_path: "{PROJECT_ROOT}/assets/Roboot1.6/xml/scene_1.xml"
 control_mode: "position"
 
@@ -53,8 +53,10 @@ kds: [5, 5, 5, 5, 5, 5,
 
 # 机器人默认站立角，用于动作偏置中心
 # 与当前 roboot16.py 中的 stand-like 默认姿态保持一致
-default_angles: [-0.0195, -0.0195, -0.0079, -0.0079, 0.0005, 0.0005,
-                 0.0441, 0.0441, -0.0068, -0.0068, 0.0185, 0.0185]
+# default_angles: [-0.0195, -0.0195, -0.0079, -0.0079, 0.0005, 0.0005,
+#                  0.0441, 0.0441, -0.0068, -0.0068, 0.0185, 0.0185]
+default_angles: [-0.28, -0.28, 0.0, 0.0, 0.0, 0.0,
+                 0.58, 0.58, -0.32, -0.32, 0.0, 0.0]
 
 # 机体角速度观测缩放
 ang_vel_scale: 1.0
@@ -101,15 +103,15 @@ camera_elevation: -5.0
 # 初始速度命令 [vx, vy, wz]
 # 含义分别是：前进速度、侧向速度、偏航角速度
 # 如果你想“从静止慢慢加速”，通常这里设成 [0.0, 0.0, 0.0]
-cmd_init: [0.0, 0.0, 0.0]
+cmd_init: [2.0, 0.0, 0.0]
 
 # 目标速度命令 [vx, vy, wz]
 # 机器人会从 cmd_init 逐渐过渡到这个目标值
-cmd_target: [0.0, 0.0, 0.0]
+cmd_target: [2.0, 0.0, 0.0]
 
 # 速度命令开始渐进的时间，单位秒
 # 例如设成 0.6，表示先保持 cmd_init 0.6 秒，再开始加速
-cmd_ramp_start_time: 1.0
+cmd_ramp_start_time: 0
 
 # 速度命令从 cmd_init 线性过渡到 cmd_target 所用时间，单位秒
 # 数值越大，加速越平缓；设成 0 表示不渐进，直接使用 cmd_target

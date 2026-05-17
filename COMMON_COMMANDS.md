@@ -235,8 +235,8 @@ cp /root/isaaclab/roboot16/logs/rsl_rl/roboot16_mimic_project/2026-05-13_19-17-4
 
 6. sim2sim:本地mujoco
 mjpython roboot16/deploy/deploy_mujoco/deploy_mujoco_roboot16_mimic.py \
-  --onnx roboot16/deploy/pre_train/roboot16_mimic/policy1.onnx \
-  --motion-npz /Users/zhuran/IsaacLab/roboot16/data/mimic/walk1_subject1_short_50hz.npz \
+  --onnx roboot16/deploy/pre_train/roboot16_mimic/policy5.onnx \
+  --motion-npz /Users/zhuran/IsaacLab/roboot16/data/mimic/walk1_subject1_test1_30s.npz \
   --model roboot16/assets/Roboot1.6/xml/scene_1.xml \
   --simulation-dt 0.005 \
   --control-decimation 4 \
